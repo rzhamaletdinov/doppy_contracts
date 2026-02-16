@@ -1,10 +1,10 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Contract} from "ethers";
+import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { MultiVesting } from "../typechain";
 import { deployCHEEL, deployMultiVesting } from "../utils/deployContracts"
-import { currentTimestamp, increaseTime } from "../utils/helpers"
+import { currentTimestamp, expectCustomError, increaseTime } from "../utils/helpers"
 
 
 describe("MultiVesting", function () {
@@ -19,63 +19,66 @@ describe("MultiVesting", function () {
   let gnosisMV: SignerWithAddress
   let amount = 1000
   let day = 60 * 60 * 24
-  let getDay = (num: number) => {return num * day}
+  let getDay = (num: number) => { return num * day }
 
-  before(async() => {
+  before(async () => {
     [owner, receiver, receiver2, receiver3, receiver4] = await ethers.getSigners()
 
     cheel = await deployCHEEL()
     vesting = await deployMultiVesting(cheel.address, true, true)
 
-    gnosisMV = await ethers.getImpersonatedSigner(await vesting.GNOSIS())
-    gnosisCheel = await ethers.getImpersonatedSigner(await cheel.GNOSIS())
+    gnosisMV = await ethers.getImpersonatedSigner(await vesting.GNOSIS_WALLET())
+    gnosisCheel = await ethers.getImpersonatedSigner(await cheel.GNOSIS_WALLET())
 
-    await owner.sendTransaction({to: gnosisMV.address,value: ethers.utils.parseEther("0.3")})
-    await owner.sendTransaction({to: gnosisCheel.address,value: ethers.utils.parseEther("0.3")})    
+    await owner.sendTransaction({ to: gnosisMV.address, value: ethers.utils.parseEther("0.3") })
+    await owner.sendTransaction({ to: gnosisCheel.address, value: ethers.utils.parseEther("0.3") })
   })
 
-  beforeEach(async()=>{
+  beforeEach(async () => {
     cheel = await deployCHEEL()
     vesting = await deployMultiVesting(cheel.address, true, true)
 
-    await vesting.connect(gnosisMV).setSeller(await owner.getAddress())
+    await vesting.connect(gnosisMV).setSaleContract(await owner.getAddress())
   })
 
-  it("Vest and sumVesting work", async() => {
-    expect(await vesting.sumVesting()).to.be.equal(0)
-    await expect(vesting.vest(await owner.getAddress(), await currentTimestamp()-1, 1000, amount, 100)).to.be.revertedWith("Not enough tokens")
-    expect(await vesting.sumVesting()).to.be.equal(0)
-    
-    await cheel.connect(gnosisCheel).mint(vesting.address, amount)
- 
-    expect(await vesting.sumVesting()).to.be.equal(0)
-    await vesting.vest(await owner.getAddress(), await currentTimestamp()-1, 1000, amount, 100)
-    expect(await vesting.sumVesting()).to.be.equal(amount)
+  it("Vest and vestingAmount work", async () => {
+    expect(await vesting.vestingAmount()).to.be.equal(0)
+    await expectCustomError(
+      vesting.vest(await owner.getAddress(), await currentTimestamp() - 1, 1000, amount, 100),
+      "InsufficientTokens"
+    )
+    expect(await vesting.vestingAmount()).to.be.equal(0)
 
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(vesting.address, await currentTimestamp()-1, 1000, amount, 100)
-    expect(await vesting.sumVesting()).to.be.equal(amount * 2)
+
+    expect(await vesting.vestingAmount()).to.be.equal(0)
+    await vesting.vest(await owner.getAddress(), await currentTimestamp() - 1, 1000, amount, 100)
+    expect(await vesting.vestingAmount()).to.be.equal(amount)
+
+    await cheel.connect(gnosisCheel).mint(vesting.address, amount)
+    await vesting.vest(vesting.address, await currentTimestamp() - 1, 1000, amount, 100)
+    expect(await vesting.vestingAmount()).to.be.equal(amount * 2)
   })
 
-  it("Cliff works", async() => {
+  it("Cliff works", async () => {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(owner.address, await currentTimestamp()-1, 1000, amount, 100)
+    await vesting.vest(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     await increaseTime(50)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(0)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(52)
-    
+
     await increaseTime(50)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(102)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(102)
   })
 
-  it("Releasable And VestedAmount works works", async() => {
+  it("Releasable And VestedAmount works works", async () => {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(owner.address, await currentTimestamp()-1, 1000, amount, 100)
+    await vesting.vest(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     await increaseTime(100)
-    
+
     expect((await vesting.vestedAmountBeneficiary(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(102)
     expect((await vesting.vestedAmountBeneficiary(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
 
@@ -90,14 +93,14 @@ describe("MultiVesting", function () {
     await increaseTime(899)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(897)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
-    
+
     await increaseTime(amount)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(897)
-    expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)    
+    expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
 
     await vesting.release(await owner.getAddress())
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(0)
-    expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)    
+    expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
     expect((await vesting.vestedAmountBeneficiary(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(amount)
     expect((await vesting.vestedAmountBeneficiary(await owner.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
     expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), await currentTimestamp()))[0]).to.be.equal(0)
@@ -105,18 +108,18 @@ describe("MultiVesting", function () {
   })
 
 
-  it("Blocking works", async()=>{
+  it("Blocking works", async () => {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(vesting.address, await currentTimestamp()-1, 1000, amount, 100)
+    await vesting.vest(vesting.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     let fakeToken = await deployCHEEL()
 
     await fakeToken.connect(gnosisCheel).mint(vesting.address, amount)
     expect(await fakeToken.balanceOf(gnosisMV.address)).to.be.equal(0)
     expect(await fakeToken.balanceOf(vesting.address)).to.be.equal(amount)
-    expect(await vesting.sumVesting()).to.be.not.equal(0)
+    expect(await vesting.vestingAmount()).to.be.not.equal(0)
     await vesting.connect(gnosisMV).emergencyVest(fakeToken.address)
-    expect(await vesting.sumVesting()).to.be.not.equal(0)
+    expect(await vesting.vestingAmount()).to.be.not.equal(0)
     expect(await fakeToken.balanceOf(gnosisMV.address)).to.be.equal(amount)
     expect(await fakeToken.balanceOf(vesting.address)).to.be.equal(0)
 
@@ -125,48 +128,84 @@ describe("MultiVesting", function () {
     expect(await cheel.balanceOf(vesting.address)).to.be.equal(0)
 
     await vesting.connect(gnosisMV).disableEarlyWithdraw()
-    await expect(vesting.connect(gnosisMV).emergencyVest(cheel.address)).to.be.revertedWith("Option not allowed")
+    await expectCustomError(
+      vesting.connect(gnosisMV).emergencyVest(cheel.address),
+      "OptionDisabled"
+    )
   })
 
-  it("change beneficiary works", async() => {
-    console.log(await cheel.balanceOf(vesting.address), await vesting.sumVesting());
+  it("change beneficiary works", async () => {
+    console.log(await cheel.balanceOf(vesting.address), await vesting.vestingAmount());
     await cheel.connect(gnosisCheel).mint(vesting.address, amount * 2)
-    await vesting.connect(owner).vest(owner.address, await currentTimestamp()-1, 1000, amount, 100)
+    await vesting.connect(owner).vest(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
 
-    console.log(await cheel.balanceOf(vesting.address), await vesting.sumVesting());
-    await expect(vesting.connect(receiver2).updateBeneficiary(receiver2.address, receiver4.address)).to.be.revertedWith("Not a beneficiary")
+    console.log(await cheel.balanceOf(vesting.address), await vesting.vestingAmount());
+    await expectCustomError(
+      vesting.connect(receiver2).updateBeneficiary(receiver2.address, receiver4.address),
+      "UserIsNotBeneficiary"
+    )
     await vesting.connect(owner).updateBeneficiary(owner.address, receiver4.address)
     await vesting.vest(await receiver2.getAddress(), await currentTimestamp(), 1, amount, 1)
-    await expect(vesting.connect(receiver2).updateBeneficiary(receiver2.address, owner.address)).to.be.revertedWith("Already a beneficiary")
+    await expectCustomError(
+      vesting.connect(receiver2).updateBeneficiary(receiver2.address, owner.address),
+      "BeneficiaryAlreadyExists"
+    )
     expect((await vesting.releasable(await receiver2.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
 
     await vesting.connect(receiver2).updateBeneficiary(receiver2.address, receiver3.address)
     await vesting.connect(receiver2).updateBeneficiary(receiver2.address, receiver3.address)
 
-    await expect(vesting.connect(receiver3).finishUpdateBeneficiary(receiver2.address)).to.be.revertedWith("Required time hasn't passed")
-    await expect(vesting.connect(receiver3).finishUpdateBeneficiary(receiver3.address)).to.be.revertedWith("Not a beneficiary")
+    await expectCustomError(
+      vesting.connect(receiver3).finishUpdateBeneficiary(receiver2.address),
+      "UpdateLockPeriodNotPassed"
+    )
+    await expectCustomError(
+      vesting.connect(receiver3).finishUpdateBeneficiary(receiver3.address),
+      "NoPendingUpdate"
+    )
     await increaseTime(100)
 
-    await expect(vesting.connect(receiver3).finishUpdateBeneficiary(receiver3.address)).to.be.revertedWith("Not a beneficiary")
+    await expectCustomError(
+      vesting.connect(receiver3).finishUpdateBeneficiary(receiver3.address),
+      "NoPendingUpdate"
+    )
     await vesting.connect(receiver3).finishUpdateBeneficiary(receiver2.address)
 
-    await expect(vesting.connect(receiver2).updateBeneficiary(receiver3.address, receiver2.address)).to.be.revertedWith("Not allowed to change")
+    await expectCustomError(
+      vesting.connect(receiver2).updateBeneficiary(receiver3.address, receiver2.address),
+      "Unauthorized"
+    )
     await vesting.connect(receiver3).updateBeneficiary(receiver3.address, receiver2.address)
-    await expect(vesting.connect(receiver2).updateBeneficiary(receiver3.address, receiver2.address)).to.be.revertedWith("Not allowed to change")
+    await expectCustomError(
+      vesting.connect(receiver2).updateBeneficiary(receiver3.address, receiver2.address),
+      "Unauthorized"
+    )
     await increaseTime(201)
-    await expect(vesting.connect(receiver2).finishUpdateBeneficiary(receiver3.address)).to.be.revertedWith("Time passed, request new update")
+    await expectCustomError(
+      vesting.connect(receiver2).finishUpdateBeneficiary(receiver3.address),
+      "UpdateLockPeriodExpired"
+    )
 
     expect((await vesting.releasable(await receiver2.getAddress(), await currentTimestamp()))[1]).to.be.equal(0)
     expect((await vesting.releasable(await receiver3.getAddress(), await currentTimestamp()))[1]).to.be.equal(amount)
     await increaseTime(1000)
-    await expect(vesting.connect(owner).updateBeneficiary(owner.address, receiver3.address)).to.be.revertedWith("Update pending")
-    await expect(vesting.connect(owner).finishUpdateBeneficiary(owner.address)).to.be.revertedWith("Time passed, request new update")
+    await expectCustomError(
+      vesting.connect(owner).updateBeneficiary(owner.address, receiver3.address),
+      "UpdatePending"
+    )
+    await expectCustomError(
+      vesting.connect(owner).finishUpdateBeneficiary(owner.address),
+      "UpdateLockPeriodExpired"
+    )
 
   })
 
-  it("vesting update and create", async()=>{
+  it("vesting update and create", async () => {
     console.log("can't update non-existing");
-    await expect(vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 50)).to.be.revertedWith("User is not beneficiary")
+    await expectCustomError(
+      vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 50),
+      "UserIsNotBeneficiary"
+    )
 
     console.log("create vesting");
     await cheel.connect(gnosisCheel).mint(vesting.address, 1000)
@@ -174,10 +213,16 @@ describe("MultiVesting", function () {
 
     console.log("can't update vesting when balance and _amount > 0");
     await cheel.connect(gnosisCheel).mint(vesting.address, 1000)
-    await expect(vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, amount, 50)).to.be.revertedWith("User is already a beneficiary")
+    await expectCustomError(
+      vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, amount, 50),
+      "BeneficiaryAlreadyExists"
+    )
 
     console.log("can't update vest when cliff more than older and _amount = 0");
-    await expect(vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 150)).to.be.revertedWith("New cliff must be no later than older one")
+    await expectCustomError(
+      vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 150),
+      "CliffCannotBeIncreased"
+    )
 
     console.log("can update vest when cliff less than older and amount = 0");
     await vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 50)
@@ -214,8 +259,8 @@ describe("MultiVesting", function () {
 
   it("change amount of recipient", async () => {
     let currentTime = await currentTimestamp()
-    
-    await cheel.connect(gnosisCheel).mint(vesting.address, amount*3)
+
+    await cheel.connect(gnosisCheel).mint(vesting.address, amount * 3)
     await vesting.connect(owner).vest(receiver.address, currentTime, getDay(3), amount, getDay(5))
 
     expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), currentTime))[1].toNumber()).to.be.equal(amount)
@@ -227,13 +272,13 @@ describe("MultiVesting", function () {
     expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(0)
     expect((await vesting.vestedAmountBeneficiary(await receiver2.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount)
 
-    await vesting.connect(owner).vest(receiver.address, currentTime, getDay(3), amount*2, getDay(5) + 2)
+    await vesting.connect(owner).vest(receiver.address, currentTime, getDay(3), amount * 2, getDay(5) + 2)
     await vesting.connect(owner).vest(receiver2.address, currentTime, 2, 0, 2)
 
-    expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount*2)
+    expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount * 2)
     expect((await vesting.vestedAmountBeneficiary(await receiver2.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount)
-    
-    await increaseTime(10) 
+
+    await increaseTime(10)
 
     expect(await cheel.balanceOf(await receiver2.getAddress())).to.be.equal(0)
     await vesting.release(await receiver2.getAddress())
@@ -243,6 +288,9 @@ describe("MultiVesting", function () {
   it("should block emergency vesting when disabled upon deployment", async () => {
     vesting = await deployMultiVesting(cheel.address, true, false)
 
-    await expect(vesting.connect(gnosisMV).emergencyVest(cheel.address)).to.be.revertedWith("Option not allowed")
+    await expectCustomError(
+      vesting.connect(gnosisMV).emergencyVest(cheel.address),
+      "OptionDisabled"
+    )
   })
 })

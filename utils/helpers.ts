@@ -9,8 +9,21 @@ export async function currentTimestamp() {
 export async function increaseTimeDays(days: any) {
     return increaseTime(days * 24 * 60 * 60)
 }
-  
+
 export async function increaseTime(seconds: any) {
     await ethers.provider.send("evm_increaseTime", [seconds])
     await ethers.provider.send("evm_mine", [])
+}
+
+export async function expectCustomError(promise: Promise<any>, errorName: string) {
+    try {
+        await promise;
+    } catch (error: any) {
+        const message = error.message || "";
+        if (message.includes(errorName)) {
+            return;
+        }
+        throw new Error(`Expected custom error '${errorName}', but got '${message}'`);
+    }
+    throw new Error(`Expected custom error '${errorName}', but transaction did not revert`);
 }

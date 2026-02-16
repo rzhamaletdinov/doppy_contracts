@@ -1,13 +1,13 @@
 import NetworkConfigInterface from '../lib/NetworkConfigInterface';
 
-export interface CommonBlacklistInterface {
+export interface BlockListConfigInterface {
   testnet: NetworkConfigInterface;
   mainnet: NetworkConfigInterface;
   contractName: string;
   multiSigAddress: string;
-  contractAddress: string|null;
+  contractAddress: string | null;
   proxyContractAddress: string;
-  adminContractAddress: string|null;
+  adminContractAddress: string | null;
 }
 
 export interface LEEConfigInterface {
@@ -17,11 +17,11 @@ export interface LEEConfigInterface {
   tokenName: string;
   tokenSymbol: string;
   maxAmount: number;
-  blackList: string;
+  blockList: string;
   multiSigAddress: string;
-  contractAddress: string|null;
+  contractAddress: string | null;
   proxyContractAddress: string;
-  adminContractAddress: string|null;
+  adminContractAddress: string | null;
 }
 
 export interface CHEELConfigInterface {
@@ -31,44 +31,58 @@ export interface CHEELConfigInterface {
   tokenName: string;
   tokenSymbol: string;
   maxAmount: number;
-  blackList: string;
+  blockList: string;
   multiSigAddress: string;
-  contractAddress: string|null;
+  contractAddress: string | null;
   proxyContractAddress: string;
-  adminContractAddress: string|null;
+  adminContractAddress: string | null;
 }
 
-export interface NFTConfigInterface {
-  testnet: NetworkConfigInterface;
-  mainnet: NetworkConfigInterface;
-  contractName: string;
-  nftName: string;
-  nftSymbol: string;
-  blackList: string;
-  multiSigAddress: string;
-  contractAddress: string|null;
-  proxyContractAddress: string;
-  adminContractAddress: string|null;
-}
+// export interface NFTConfigInterface {
+//   testnet: NetworkConfigInterface;
+//   mainnet: NetworkConfigInterface;
+//   contractName: string;
+//   nftName: string;
+//   nftSymbol: string;
+//   blockList: string;
+//   multiSigAddress: string;
+//   contractAddress: string | null;
+//   proxyContractAddress: string;
+//   adminContractAddress: string | null;
+// }
 
-export interface NFTSaleConfigInterface {
-  testnet: NetworkConfigInterface;
-  mainnet: NetworkConfigInterface;
-  contractName: string;
-  multiSigAddress: string;
-  contractAddress: string|null;
-  proxyContractAddress: string;
-  adminContractAddress: string|null;
-}
+// export interface NFTSaleConfigInterface {
+//   testnet: NetworkConfigInterface;
+//   mainnet: NetworkConfigInterface;
+//   contractName: string;
+//   multiSigAddress: string;
+//   contractAddress: string | null;
+//   proxyContractAddress: string;
+//   adminContractAddress: string | null;
+// }
 
 export interface TreasuryConfigInterface {
   testnet: NetworkConfigInterface;
   mainnet: NetworkConfigInterface;
   contractName: string;
   multiSigAddress: string;
-  contractAddress: string|null;
+  contractAddress: string | null;
   proxyContractAddress: string;
-  adminContractAddress: string|null;
+  adminContractAddress: string | null;
+}
+
+export interface MultiVestingConfigInterface {
+  testnet: NetworkConfigInterface;
+  mainnet: NetworkConfigInterface;
+  contractName: string;
+  contractAddress: string | null;
+  proxyContractAddress: string;
+  adminContractAddress: string | null;
+  beneficiaryUpdateEnabled: boolean;
+  emergencyWithdrawEnabled: boolean;
+  beneficiaryUpdateDelaySeconds: number;
+  beneficiaryUpdateValiditySeconds: number;
+  cheelTokenAddress: string;
 }
 
 

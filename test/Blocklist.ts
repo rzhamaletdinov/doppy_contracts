@@ -1,79 +1,89 @@
-import {assert, expect} from "chai";
-import {contract, ethers} from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import {deployCHEEL, deployCommonBlacklist} from "../utils/deployContracts";
-import {Contract} from "ethers";
-import {parseEther} from "ethers/lib/utils";
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { deployCHEEL, deployBlockList } from "../utils/deployContracts";
+import { Contract } from "ethers";
+import { parseEther } from "ethers/lib/utils";
+import { expectCustomError } from "../utils/helpers";
 
-contract("Blacklist", () => {
-    let commonBlacklist: Contract;
-    let cheel: Contract;
-    let owner: SignerWithAddress;
-    let user: SignerWithAddress;
-    let blacklistGnosis: SignerWithAddress;
-    let cheelGnosis: SignerWithAddress;
+describe("BlockList", () => {
+  let blockList: Contract;
+  let cheel: Contract;
+  let owner: SignerWithAddress;
+  let user: SignerWithAddress;
+  let blockListGnosis: SignerWithAddress;
+  let cheelGnosis: SignerWithAddress;
 
-    before(async()=>{
-        [owner, user] = await ethers.getSigners();
+  before(async () => {
+    [owner, user] = await ethers.getSigners();
 
-        cheelGnosis = await ethers.getImpersonatedSigner("0x126481E4E79cBc8b4199911342861F7535e76EE7")
-        await owner.sendTransaction({
-            to: cheelGnosis.address,
-            value: ethers.utils.parseEther("1")
-          })
-        blacklistGnosis = await ethers.getImpersonatedSigner("0x126481E4E79cBc8b4199911342861F7535e76EE7")
-        await owner.sendTransaction({
-          to: blacklistGnosis.address,
-          value: ethers.utils.parseEther("1")
-        })
-
+    cheelGnosis = await ethers.getImpersonatedSigner("0x126481E4E79cBc8b4199911342861F7535e76EE7")
+    await owner.sendTransaction({
+      to: cheelGnosis.address,
+      value: parseEther("1")
+    })
+    blockListGnosis = await ethers.getImpersonatedSigner("0x126481E4E79cBc8b4199911342861F7535e76EE7")
+    await owner.sendTransaction({
+      to: blockListGnosis.address,
+      value: parseEther("1")
     })
 
-    beforeEach(async () => {
-        commonBlacklist = await deployCommonBlacklist();
+  })
 
-        cheel = await deployCHEEL();
-    })
+  beforeEach(async () => {
+    blockList = await deployBlockList();
 
-    it("No role setup upon deployment", async()=>{
-        expect(await commonBlacklist.hasRole(await commonBlacklist.BLACKLIST_OPERATOR_ROLE(), await commonBlacklist.GNOSIS())).to.be.equal(true)
-    })
+    cheel = await deployCHEEL();
+  })
 
-    it("Bug in exclusion logic", async()=>{
-        await commonBlacklist.connect(blacklistGnosis).setTokenLimits(cheel.address, 500, 500, 500, 100)
-        await commonBlacklist.connect(blacklistGnosis).changeDisablingTokenLimits(cheel.address, true, true, true, true)
+  it("No role setup upon deployment", async () => {
+    expect(await blockList.hasRole(await blockList.BLOCKLIST_ADMIN_ROLE(), await blockList.GNOSIS_WALLET())).to.be.equal(true)
+  })
 
-        await cheel.connect(cheelGnosis).mint(owner.address, 200)
+  it("Bug in exclusion logic", async () => {
+    await blockList.connect(blockListGnosis).setTokenLimits(cheel.address, 500, 500, 500, 100)
+    await blockList.connect(blockListGnosis).changeDisablingTokenLimits(cheel.address, true, true, true, true)
 
-        await cheel.connect(cheelGnosis).setBlacklist(commonBlacklist.address);
+    await cheel.connect(cheelGnosis).mint(owner.address, 200)
 
-        await expect(cheel.connect(owner).transfer(user.address, 200)).to.be.revertedWith("Spender has reached the month limit")
+    await cheel.connect(cheelGnosis).setBlockList(blockList.address);
 
-        await commonBlacklist.connect(blacklistGnosis).addContractToExclusionList(
-          owner.address
-        )
+    await expectCustomError(
+      cheel.connect(owner).transfer(user.address, 200),
+      "MonthlyOutcomeLimitReached"
+    )
 
-        await cheel.connect(owner).transfer(user.address, 200);
+    await blockList.connect(blockListGnosis).addContractToExclusionList(
+      owner.address
+    )
 
-        expect(await cheel.balanceOf(user.address)).to.be.equal(200)
-    })
+    await cheel.connect(owner).transfer(user.address, 200);
 
-    it("Underflow", async() => {
-        await cheel.connect(cheelGnosis).setBlacklist(commonBlacklist.address);
-        await cheel.connect(cheelGnosis).mint(owner.address, 400)
+    expect(await cheel.balanceOf(user.address)).to.be.equal(200)
+  })
 
-        await commonBlacklist.connect(blacklistGnosis).setTokenLimits(cheel.address, 500, 500, 500, 500)
-        await commonBlacklist.connect(blacklistGnosis).changeDisablingTokenLimits(cheel.address, true, true, true, true)
+  it("Underflow", async () => {
+    await cheel.connect(cheelGnosis).setBlockList(blockList.address);
+    await cheel.connect(cheelGnosis).mint(owner.address, 400)
 
-        await cheel.connect(owner).transfer(user.address, 400);
-        assert.equal(
-          String(await commonBlacklist.getUserRemainingLimit(cheel.address, owner.address)),
-          '500,500,100,100'
-        );
-        await commonBlacklist.connect(blacklistGnosis).setTokenLimits(cheel.address, 300, 300, 300, 300)
-        assert.equal(
-          String(await commonBlacklist.getUserRemainingLimit(cheel.address, owner.address)),
-          '300,300,0,0'
-        );
-    })
+    await blockList.connect(blockListGnosis).setTokenLimits(cheel.address, 500, 500, 500, 500)
+    await blockList.connect(blockListGnosis).changeDisablingTokenLimits(cheel.address, true, true, true, true)
+
+    await cheel.connect(owner).transfer(user.address, 400);
+    {
+      const _r = await blockList.getUserRemainingLimit(cheel.address, owner.address);
+      expect(_r[0]).to.equal(500);
+      expect(_r[1]).to.equal(500);
+      expect(_r[2]).to.equal(100);
+      expect(_r[3]).to.equal(100);
+    }
+    await blockList.connect(blockListGnosis).setTokenLimits(cheel.address, 300, 300, 300, 300)
+    {
+      const _r = await blockList.getUserRemainingLimit(cheel.address, owner.address);
+      expect(_r[0]).to.equal(300);
+      expect(_r[1]).to.equal(300);
+      expect(_r[2]).to.equal(0);
+      expect(_r[3]).to.equal(0);
+    }
+  })
 })
