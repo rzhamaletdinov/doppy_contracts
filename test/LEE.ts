@@ -1,34 +1,35 @@
-import {assert, expect} from "chai";
+import { expect } from "chai";
 import {
   expectRevert,
   constants
   // @ts-ignore
 } from "@openzeppelin/test-helpers";
 import { parseEther } from "ethers/lib/utils";
-import {contract, ethers} from "hardhat";
-import {LEEConfig, CommonBlacklistConfig} from '../config/ContractsConfig';
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import {Contract} from "ethers";
-import {deployCommonBlacklist, deployLEE} from "../utils/deployContracts";
+import { ethers } from "hardhat";
+import { LEEConfig, BlockListConfig } from '../config/ContractsConfig';
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Contract } from "ethers";
+import { deployBlockList, deployLEE } from "../utils/deployContracts";
+import { expectCustomError } from "../utils/helpers";
 
-contract(LEEConfig.contractName, () => {
-  let commonBlacklist: Contract;
+describe(LEEConfig.contractName, () => {
+  let blockList: Contract;
   let lee: Contract;
   let gnosis: SignerWithAddress;
-  let blacklistGnosis: SignerWithAddress;
+  let blockListGnosis: SignerWithAddress;
   let etherHolder: SignerWithAddress;
   let deployer: SignerWithAddress;
   let receiver: SignerWithAddress;
   let badguy: SignerWithAddress;
   let moderator: SignerWithAddress;
   let verybadguy: SignerWithAddress;
-  let BLACKLIST_OPERATOR_ROLE: string;
+  let BLOCKLIST_ADMIN_ROLE: string;
   let result: any;
   let resultWaited: any;
 
   before(async () => {
-    // Deploy Common Blacklist
-    commonBlacklist = await deployCommonBlacklist();
+    // Deploy BlockList
+    blockList = await deployBlockList();
 
     // Deploy LEE
     lee = await deployLEE();
@@ -36,32 +37,32 @@ contract(LEEConfig.contractName, () => {
     // Creating GNOSIS
     [etherHolder, deployer, receiver, badguy, moderator, verybadguy] = await ethers.getSigners();
     gnosis = await ethers.getImpersonatedSigner(LEEConfig.multiSigAddress);
-    blacklistGnosis = await ethers.getImpersonatedSigner(CommonBlacklistConfig.multiSigAddress);
+    blockListGnosis = await ethers.getImpersonatedSigner(BlockListConfig.multiSigAddress);
     await etherHolder.sendTransaction({
       to: LEEConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
     });
     await etherHolder.sendTransaction({
-      to: CommonBlacklistConfig.multiSigAddress,
+      to: BlockListConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
     });
 
-    BLACKLIST_OPERATOR_ROLE = await commonBlacklist.BLACKLIST_OPERATOR_ROLE();
+    BLOCKLIST_ADMIN_ROLE = await blockList.BLOCKLIST_ADMIN_ROLE();
   });
 
   describe("Normal cases:", async () => {
-    it("Setting blacklist", async function () {
-      await lee.connect(gnosis).setBlacklist(commonBlacklist.address);
+    it("Setting blockList", async function () {
+      await lee.connect(gnosis).setBlockList(blockList.address);
     });
 
     it("Check initial data", async function () {
       expect(await lee.name()).to.equal(LEEConfig.tokenName);
       expect(await lee.symbol()).to.equal(LEEConfig.tokenSymbol);
       const maxAmount = parseEther(`${LEEConfig.maxAmount}`).toString();
-      expect((await lee.MAX_AMOUNT()).toString()).to.equal(maxAmount);
+      expect((await lee.MAX_SUPPLY()).toString()).to.equal(maxAmount);
       expect((await lee.totalSupply()).toString()).to.equal('0');
-      expect((await lee.commonBlacklist()).toUpperCase()).to.equal(commonBlacklist.address.toUpperCase());
-      expect((await lee.GNOSIS()).toUpperCase()).to.equal(LEEConfig.multiSigAddress.toUpperCase());
+      expect((await lee.blockList()).toUpperCase()).to.equal(blockList.address.toUpperCase());
+      expect((await lee.GNOSIS_WALLET()).toUpperCase()).to.equal(LEEConfig.multiSigAddress.toUpperCase());
       expect((await lee.owner()).toUpperCase()).to.equal(LEEConfig.multiSigAddress.toUpperCase());
     });
 
@@ -92,35 +93,17 @@ contract(LEEConfig.contractName, () => {
         parseEther("3000000")
       );
 
-      assert.equal(
-        String(await lee.totalSupply()),
-        parseEther("10000000").toString()
-      );
+      expect(await lee.totalSupply()).to.equal(parseEther("10000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(gnosis.address)),
-        parseEther("1000000").toString()
-      );
+      expect(await lee.balanceOf(gnosis.address)).to.equal(parseEther("1000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("1000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(receiver.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(receiver.address)).to.equal(parseEther("2000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("3000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("3000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("3000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("3000000"));
     });
 
     it("Burn tokens", async function () {
@@ -128,15 +111,9 @@ contract(LEEConfig.contractName, () => {
         parseEther("1000000")
       );
 
-      assert.equal(
-        String(await lee.balanceOf(gnosis.address)),
-        parseEther("0").toString()
-      );
+      expect(await lee.balanceOf(gnosis.address)).to.equal(parseEther("0"));
 
-      assert.equal(
-        String(await lee.totalSupply()),
-        parseEther("9000000").toString()
-      );
+      expect(await lee.totalSupply()).to.equal(parseEther("9000000"));
     });
 
     it("Transactions", async function () {
@@ -145,48 +122,42 @@ contract(LEEConfig.contractName, () => {
         parseEther("1000000")
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
     });
   });
 
-  describe("Global Blacklist", async () => {
-    it("Grant BLACKLIST_OPERATOR_ROLE for moderator", async function () {
-      result = await commonBlacklist.connect(blacklistGnosis).grantRole(
-        BLACKLIST_OPERATOR_ROLE,
+  describe("Global Blocklist", async () => {
+    it("Grant BLOCKLIST_ADMIN_ROLE for moderator", async function () {
+      result = await blockList.connect(blockListGnosis).grantRole(
+        BLOCKLIST_ADMIN_ROLE,
         moderator.address
       );
       resultWaited = await result.wait();
 
-      expect(resultWaited.events[0].args.role).to.equal(BLACKLIST_OPERATOR_ROLE);
+      expect(resultWaited.events[0].args.role).to.equal(BLOCKLIST_ADMIN_ROLE);
       expect(resultWaited.events[0].args.account).to.equal(moderator.address);
-      assert.equal(await commonBlacklist.hasRole(BLACKLIST_OPERATOR_ROLE, moderator.address), true);
+      expect(await blockList.hasRole(BLOCKLIST_ADMIN_ROLE, moderator.address)).to.be.true;
     });
 
-    it("Adding verybadguy for common blacklist", async function () {
-      await commonBlacklist.connect(moderator).addUsersToBlacklist(
+    it("Adding verybadguy for common blocklist", async function () {
+      await blockList.connect(moderator).addUsersToBlockList(
         [verybadguy.address]
       );
 
-      assert.equal(await commonBlacklist.userIsBlacklisted(badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), false);
-      assert.equal(await commonBlacklist.userIsBlacklisted(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), true);
-      assert.equal(await commonBlacklist.userIsBlacklisted(deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), false);
+      expect(await blockList.userIsBlocked(badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
+      expect(await blockList.userIsBlocked(deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
     });
 
-    it("Blocking transactions for users in common blacklist", async function () {
-      await expectRevert(
+    it("Blocking transactions for users in common blocklist", async function () {
+      await expectCustomError(
         lee.connect(verybadguy).transfer(
           deployer.address,
           parseEther("1000000")
         ),
-        "LEE: Blocked by global blacklist"
+        "BlockedByGlobalBlockList"
       );
 
       await expectRevert(
@@ -198,26 +169,20 @@ contract(LEEConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(verybadguy.address)),
-        parseEther("3000000").toString()
-      );
+      expect(await lee.balanceOf(verybadguy.address)).to.equal(parseEther("3000000"));
     });
 
-    it("Removing verybadguy from common blacklist", async function () {
-      await commonBlacklist.connect(moderator).removeUsersFromBlacklist(
+    it("Removing verybadguy from common blocklist", async function () {
+      await blockList.connect(moderator).removeUsersFromBlockList(
         [verybadguy.address]
       );
 
-      assert.equal(await commonBlacklist.userIsBlacklisted(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), false);
+      expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
     });
 
-    it("UnBlocking transactions for users in common blacklist and blocking again", async function () {
+    it("UnBlocking transactions for users in common blocklist and blocking again", async function () {
       result = await lee.connect(verybadguy).transfer(
         deployer.address,
         parseEther("1000000")
@@ -237,50 +202,45 @@ contract(LEEConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("3000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("3000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(verybadguy.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(verybadguy.address)).to.equal(parseEther("2000000"));
 
-      await commonBlacklist.connect(moderator).addUsersToBlacklist(
+      await blockList.connect(moderator).addUsersToBlockList(
         [verybadguy.address]
       );
     });
   });
 
-  describe("Internal Blacklist", async () => {
-    it("Adding badguy for internal blacklist", async function () {
-      await commonBlacklist.connect(moderator).addUsersToInternalBlacklist(
+  describe("Internal Blocklist", async () => {
+    it("Adding badguy for internal blocklist", async function () {
+      await blockList.connect(moderator).addUsersToInternalBlockList(
         lee.address,
         [badguy.address]
       );
 
-      assert.equal(await commonBlacklist.userIsInternalBlacklisted(lee.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), true);
-      assert.equal(await commonBlacklist.userIsInternalBlacklisted(lee.address, deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), false);
-      assert.equal(await commonBlacklist.userIsInternalBlacklisted(lee.address, verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), false);
-      assert.equal(await commonBlacklist.userIsBlacklisted(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), true);
+      expect(await blockList.userIsInternalBlocked(lee.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
+      expect(await blockList.userIsInternalBlocked(lee.address, deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsInternalBlocked(lee.address, verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
     });
 
-    it("Blocking transactions for users in internal blacklist", async function () {
-      await expectRevert(
+    it("Blocking transactions for users in internal blocklist", async function () {
+
+      await expectCustomError(
         lee.connect(badguy).transfer(
           deployer.address,
           parseEther("1000000")
         ),
-        "LEE: Blocked by internal blacklist"
+        "BlockedByInternalBlockList"
       );
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           badguy.address,
           parseEther("1000000")
         ),
-        "LEE: Blocked by internal blacklist"
+        "BlockedByInternalBlockList"
       );
 
       await expectRevert(
@@ -301,29 +261,21 @@ contract(LEEConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("3000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
     });
 
-    it("Removing badguy from internal blacklist", async function () {
-      await commonBlacklist.connect(moderator).removeUsersFromInternalBlacklist(
+    it("Removing badguy from internal blocklist", async function () {
+      await blockList.connect(moderator).removeUsersFromInternalBlockList(
         lee.address,
         [badguy.address]
       );
 
-      assert.equal(await commonBlacklist.userIsInternalBlacklisted(lee.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), false);
+      expect(await blockList.userIsInternalBlocked(lee.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
     });
 
-    it("UnBlocking transactions for users in internal blacklist and blocking again", async function () {
+    it("UnBlocking transactions for users in internal blocklist and blocking again", async function () {
       result = await lee.connect(badguy).transfer(
         deployer.address,
         parseEther("1000000")
@@ -344,56 +296,47 @@ contract(LEEConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("4000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("4000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("1000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
 
-      await commonBlacklist.connect(moderator).addUsersToInternalBlacklist(
+      await blockList.connect(moderator).addUsersToInternalBlockList(
         lee.address,
         [badguy.address]
       );
     });
   });
 
-  describe("Getting information about the presence of users from the list in the blacklist", async () => {
-    it("Only internal blacklisted user", async function () {
-      result = await commonBlacklist.connect(moderator).usersFromListIsBlacklisted(
+  describe("Getting information about the presence of users from the list in the blocklist", async () => {
+    it("Only internal blocklisted user", async function () {
+      result = await blockList.connect(moderator).usersFromListIsBlocked(
         lee.address,
         [deployer.address, receiver.address, badguy.address]
       );
 
-      assert.equal(
-        result.toString(),
+      expect(result.toString()).to.equal(
         [badguy.address].toString()
       );
     });
 
-    it("Internal and global blacklisted user", async function () {
-      result = await commonBlacklist.connect(moderator).usersFromListIsBlacklisted(
+    it("Internal and global blocklisted user", async function () {
+      result = await blockList.connect(moderator).usersFromListIsBlocked(
         lee.address,
         [deployer.address, receiver.address, badguy.address, verybadguy.address]
       );
 
-      assert.equal(
-        result.toString(),
+      expect(result.toString()).to.equal(
         [badguy.address, verybadguy.address].toString()
       );
     });
 
-    it("internal user is global blacklisted", async function () {
-      result = await commonBlacklist.connect(moderator).usersFromListIsBlacklisted(
+    it("internal user is global blocklisted", async function () {
+      result = await blockList.connect(moderator).usersFromListIsBlocked(
         constants.ZERO_ADDRESS,
         [deployer.address, receiver.address, badguy.address, verybadguy.address]
       );
 
-      assert.equal(
-        result.toString(),
+      expect(result.toString()).to.equal(
         [verybadguy.address].toString()
       );
     });
@@ -401,7 +344,7 @@ contract(LEEConfig.contractName, () => {
 
   describe("Token Rate Limit", async () => {
     it("Adding Token limit", async function () {
-      result = await commonBlacklist.connect(moderator).setTokenLimits(
+      result = await blockList.connect(moderator).setTokenLimits(
         lee.address,
         parseEther("1000000"),
         parseEther("1500000"),
@@ -417,7 +360,7 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.dailyOutcomeLimit).to.equal(parseEther("1000000").toString());
       expect(resultWaited.events[0].args.monthlyOutcomeLimit).to.equal(parseEther("1500000").toString());
 
-      result = await commonBlacklist.connect(moderator).changeDisablingTokenLimits(
+      result = await blockList.connect(moderator).changeDisablingTokenLimits(
         lee.address,
         true,
         true,
@@ -433,10 +376,13 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.hasDailyOutcomeLimit).to.equal(true);
       expect(resultWaited.events[0].args.hasMonthlyOutcomeLimit).to.equal(true);
 
-      assert.equal(
-        String(await commonBlacklist.getTokenLimits(lee.address)),
-        `${parseEther("1000000").toString()},${parseEther("1500000").toString()},${parseEther("1000000").toString()},${parseEther("1500000").toString()}`,
-      );
+      {
+        const _r = await blockList.getTokenLimits(lee.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("1500000"));
+        expect(_r[2]).to.equal(parseEther("1000000"));
+        expect(_r[3]).to.equal(parseEther("1500000"));
+      }
     });
 
     it("Testing Day and Month limits", async function () {
@@ -453,10 +399,13 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.to).to.equal(receiver.address);
       expect(resultWaited.events[0].args.value).to.equal(parseEther("500000").toString());
 
-      assert.equal(
-        String(await commonBlacklist.getUserTokenTransfers(lee.address, deployer.address)),
-        `0,0,${parseEther("500000").toString()},${parseEther("500000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserTokenTransfers(lee.address, deployer.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("500000"));
+        expect(_r[3]).to.equal(parseEther("500000"));
+      }
 
       // Second transaction
       result = await lee.connect(deployer).transfer(
@@ -470,27 +419,33 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.to).to.equal(receiver.address);
       expect(resultWaited.events[0].args.value).to.equal(parseEther("500000").toString());
 
-      assert.equal(
-        String(await commonBlacklist.getUserTokenTransfers(lee.address, deployer.address)),
-        `0,0,${parseEther("1000000").toString()},${parseEther("1000000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserTokenTransfers(lee.address, deployer.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("1000000"));
+        expect(_r[3]).to.equal(parseEther("1000000"));
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
       // Getting Remaining limit
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, deployer.address)),
-        `${parseEther("1000000").toString()},${parseEther("1500000").toString()},0,${parseEther("500000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, deployer.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("1500000"));
+        expect(_r[2]).to.equal(0);
+        expect(_r[3]).to.equal(parseEther("500000"));
+      }
 
       // disable day limits
-      await commonBlacklist.connect(moderator).changeDisablingTokenLimits(
+      await blockList.connect(moderator).changeDisablingTokenLimits(
         lee.address,
         true,
         true,
@@ -498,15 +453,15 @@ contract(LEEConfig.contractName, () => {
         true
       );
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
-        "Recipient has reached the day limit"
+        "DailyIncomeLimitReached"
       );
 
-      await commonBlacklist.connect(moderator).changeDisablingTokenLimits(
+      await blockList.connect(moderator).changeDisablingTokenLimits(
         lee.address,
         false,
         true,
@@ -520,19 +475,25 @@ contract(LEEConfig.contractName, () => {
       );
 
       // Compare limits
-      assert.equal(
-        String(await commonBlacklist.getUserTokenTransfers(lee.address, deployer.address)),
-        `0,0,${parseEther("1000000").toString()},${parseEther("1000001").toString()}`
-      );
+      {
+        const _r = await blockList.getUserTokenTransfers(lee.address, deployer.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("1000000"));
+        expect(_r[3]).to.equal(parseEther("1000001"));
+      }
 
       // Getting Remaining limit
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, deployer.address)),
-        `${parseEther("1000000").toString()},${parseEther("1500000").toString()},0,${parseEther("499999").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, deployer.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("1500000"));
+        expect(_r[2]).to.equal(0);
+        expect(_r[3]).to.equal(parseEther("499999"));
+      }
 
       // enable day limits
-      await commonBlacklist.connect(moderator).changeDisablingTokenLimits(
+      await blockList.connect(moderator).changeDisablingTokenLimits(
         lee.address,
         true,
         true,
@@ -540,12 +501,12 @@ contract(LEEConfig.contractName, () => {
         true
       );
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
       // Next day
@@ -563,40 +524,38 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.to).to.equal(receiver.address);
       expect(resultWaited.events[0].args.value).to.equal(parseEther("499999").toString());
 
-      assert.equal(
-        String(await commonBlacklist.getUserTokenTransfers(lee.address, deployer.address)),
-        `0,0,${parseEther("499999").toString()},${parseEther("1500000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserTokenTransfers(lee.address, deployer.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("499999"));
+        expect(_r[3]).to.equal(parseEther("1500000"));
+      }
 
       // Getting Remaining limit
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, deployer.address)),
-        `${parseEther("1000000").toString()},${parseEther("1500000").toString()},${parseEther("500001").toString()},0`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, deployer.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("1500000"));
+        expect(_r[2]).to.equal(parseEther("500001"));
+        expect(_r[3]).to.equal(0);
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
-        "Spender has reached the month limit"
+        "MonthlyOutcomeLimitReached"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("2500000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
     });
 
     it("Increase limits", async function () {
-      result = await commonBlacklist.connect(moderator).setTokenLimits(
+      result = await blockList.connect(moderator).setTokenLimits(
         lee.address,
         parseEther("1000000"),
         parseEther("3000000"),
@@ -612,33 +571,42 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.dailyOutcomeLimit).to.equal(parseEther("500000").toString());
       expect(resultWaited.events[0].args.monthlyOutcomeLimit).to.equal(parseEther("3000000").toString());
 
-      assert.equal(
-        String(await commonBlacklist.getTokenLimits(lee.address)),
-        `${parseEther("1000000").toString()},${parseEther("3000000").toString()},${parseEther("500000").toString()},${parseEther("3000000").toString()}`,
-      );
+      {
+        const _r = await blockList.getTokenLimits(lee.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("3000000"));
+        expect(_r[2]).to.equal(parseEther("500000"));
+        expect(_r[3]).to.equal(parseEther("3000000"));
+      }
     });
 
     it("Testing Day and Month limits", async function () {
       // Getting Remaining limit
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, deployer.address)),
-        `${parseEther("1000000").toString()},${parseEther("3000000").toString()},${parseEther("1").toString()},${parseEther("1500000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, deployer.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("3000000"));
+        expect(_r[2]).to.equal(parseEther("1"));
+        expect(_r[3]).to.equal(parseEther("1500000"));
+      }
 
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, receiver.address)),
-        `${parseEther("500001").toString()},${parseEther("1500000").toString()},${parseEther("500000").toString()},${parseEther("3000000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, receiver.address);
+        expect(_r[0]).to.equal(parseEther("500001"));
+        expect(_r[1]).to.equal(parseEther("1500000"));
+        expect(_r[2]).to.equal(parseEther("500000"));
+        expect(_r[3]).to.equal(parseEther("3000000"));
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("2")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
-      await commonBlacklist.connect(moderator).setTokenLimits(
+      await blockList.connect(moderator).setTokenLimits(
         lee.address,
         parseEther("500000"),
         parseEther("3000000"),
@@ -647,25 +615,31 @@ contract(LEEConfig.contractName, () => {
       );
 
       // Getting Remaining limit
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, deployer.address)),
-        `${parseEther("500000").toString()},${parseEther("3000000").toString()},${parseEther("500001").toString()},${parseEther("1500000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, deployer.address);
+        expect(_r[0]).to.equal(parseEther("500000"));
+        expect(_r[1]).to.equal(parseEther("3000000"));
+        expect(_r[2]).to.equal(parseEther("500001"));
+        expect(_r[3]).to.equal(parseEther("1500000"));
+      }
 
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, receiver.address)),
-        `${parseEther("1").toString()},${parseEther("1500000").toString()},${parseEther("1000000").toString()},${parseEther("3000000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, receiver.address);
+        expect(_r[0]).to.equal(parseEther("1"));
+        expect(_r[1]).to.equal(parseEther("1500000"));
+        expect(_r[2]).to.equal(parseEther("1000000"));
+        expect(_r[3]).to.equal(parseEther("3000000"));
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("2")
         ),
-        "Recipient has reached the day limit"
+        "DailyIncomeLimitReached"
       );
 
-      await commonBlacklist.connect(moderator).setTokenLimits(
+      await blockList.connect(moderator).setTokenLimits(
         lee.address,
         parseEther("1000000"),
         parseEther("3000000"),
@@ -685,28 +659,31 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.to).to.equal(receiver.address);
       expect(resultWaited.events[0].args.value).to.equal(parseEther("500000").toString());
 
-      assert.equal(
-        String(await commonBlacklist.getUserTokenTransfers(lee.address, deployer.address)),
-        `0,0,${parseEther("999999").toString()},${parseEther("2000000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserTokenTransfers(lee.address, deployer.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("999999"));
+        expect(_r[3]).to.equal(parseEther("2000000"));
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("2")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
       // Next day
       await ethers.provider.send('evm_increaseTime', [24 * 60 * 60]);
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1500000")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
       // Next Day transaction
@@ -721,29 +698,32 @@ contract(LEEConfig.contractName, () => {
       expect(resultWaited.events[0].args.to).to.equal(receiver.address);
       expect(resultWaited.events[0].args.value).to.equal(parseEther("1000000").toString());
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1500000")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
-      assert.equal(
-        String(await commonBlacklist.getUserTokenTransfers(lee.address, deployer.address)),
-        `0,0,${parseEther("1000000").toString()},${parseEther("3000000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserTokenTransfers(lee.address, deployer.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("1000000"));
+        expect(_r[3]).to.equal(parseEther("3000000"));
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1000000")
         ),
-        "Spender has reached the day limit"
+        "DailyOutcomeLimitReached"
       );
 
       // disable day limits
-      await commonBlacklist.connect(moderator).changeDisablingTokenLimits(
+      await blockList.connect(moderator).changeDisablingTokenLimits(
         lee.address,
         false,
         true,
@@ -752,25 +732,31 @@ contract(LEEConfig.contractName, () => {
       );
 
       // Getting Remaining limit
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, deployer.address)),
-        `${parseEther("1000000").toString()},${parseEther("3000000").toString()},0,0`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, deployer.address);
+        expect(_r[0]).to.equal(parseEther("1000000"));
+        expect(_r[1]).to.equal(parseEther("3000000"));
+        expect(_r[2]).to.equal(0);
+        expect(_r[3]).to.equal(0);
+      }
 
-      assert.equal(
-        String(await commonBlacklist.getUserRemainingLimit(lee.address, receiver.address)),
-        `0,0,${parseEther("1000000").toString()},${parseEther("3000000").toString()}`
-      );
+      {
+        const _r = await blockList.getUserRemainingLimit(lee.address, receiver.address);
+        expect(_r[0]).to.equal(0);
+        expect(_r[1]).to.equal(0);
+        expect(_r[2]).to.equal(parseEther("1000000"));
+        expect(_r[3]).to.equal(parseEther("3000000"));
+      }
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1000000")
         ),
-        "Spender has reached the month limit"
+        "MonthlyOutcomeLimitReached"
       );
 
-      await commonBlacklist.connect(moderator).changeDisablingTokenLimits(
+      await blockList.connect(moderator).changeDisablingTokenLimits(
         lee.address,
         false,
         true,
@@ -778,25 +764,17 @@ contract(LEEConfig.contractName, () => {
         false
       );
 
-      await expectRevert(
+      await expectCustomError(
         lee.connect(deployer).transfer(
           receiver.address,
           parseEther("1000000")
         ),
-        "Recipient has reached the month limit"
+        "MonthlyIncomeLimitReached"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(badguy.address)),
-        String(await lee.balanceOf(badguy.address)),
-        parseEther("2000000").toString()
-      );
+      expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
     });
   });
 
@@ -810,20 +788,11 @@ contract(LEEConfig.contractName, () => {
         "Ownable: caller is not the owner"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("1000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      assert.equal(
-        String(await lee.balanceOf(receiver.address)),
-        parseEther("5000000").toString()
-      );
+      expect(await lee.balanceOf(receiver.address)).to.equal(parseEther("5000000"));
 
-      assert.equal(
-        String(await lee.totalSupply()),
-        parseEther("9000000").toString()
-      );
+      expect(await lee.totalSupply()).to.equal(parseEther("9000000"));
     });
 
     it("Burn from users", async function () {
@@ -834,35 +803,23 @@ contract(LEEConfig.contractName, () => {
         "Ownable: caller is not the owner"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("1000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      assert.equal(
-        String(await lee.totalSupply()),
-        parseEther("9000000").toString()
-      );
+      expect(await lee.totalSupply()).to.equal(parseEther("9000000"));
     });
 
     it("Minting over max amount from owner", async function () {
-      await expectRevert(
+      await expectCustomError(
         lee.connect(gnosis).mint(
           gnosis.address,
-          parseEther("7000000001")
+          parseEther("30000000001")
         ),
-        "Can't mint more than max amount"
+        "MaxSupplyExceeded"
       );
 
-      assert.equal(
-        String(await lee.balanceOf(deployer.address)),
-        parseEther("1000000").toString()
-      );
+      expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      assert.equal(
-        String(await lee.totalSupply()),
-        parseEther("9000000").toString()
-      );
+      expect(await lee.totalSupply()).to.equal(parseEther("9000000"));
     });
   });
 });

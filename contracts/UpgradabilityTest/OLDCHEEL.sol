@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
 contract OLDCHEEL is ERC20VotesUpgradeable, OwnableUpgradeable {
-    uint256 public constant MAX_AMOUNT = 10**9 * 10**18;
+    uint256 public constant MAX_AMOUNT = 10 ** 9 * 10 ** 18;
     address public constant GNOSIS = 0x126481E4E79cBc8b4199911342861F7535e76EE7;
     uint256[50] private __gap;
 

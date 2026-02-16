@@ -1,7 +1,7 @@
 import { ethers, upgrades } from 'hardhat';
-import {TreasuryContractType} from '../lib/ContractProvider';
-import {CHEELConfig, LEEConfig, NFTCasesConfig, NFTGlassesConfig, TreasuryConfig} from "../config/ContractsConfig";
-import {verify} from "./19_verify";
+import { TreasuryContractType } from '../lib/ContractProvider';
+import { CHEELConfig, LEEConfig, NFTCasesConfig, NFTGlassesConfig, TreasuryConfig } from "../config/ContractsConfig";
+import { verify } from "./19_verify";
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -16,12 +16,10 @@ async function main() {
   // We get the contract to deploy
   const TreasuryContract = await ethers.getContractFactory(TreasuryConfig.contractName);
   const treasuryProxy = await upgrades.deployProxy(TreasuryContract, [
-    NFTCasesConfig.proxyContractAddress,
-    NFTGlassesConfig.proxyContractAddress,
-    '0x2ee51F0bCC1ece7B94091e5E250b08e8276256D9',
+    '', // recipient address
     LEEConfig.proxyContractAddress,
     CHEELConfig.proxyContractAddress,
-    '0x2c3C5161dA00BDB3F8C5d961620f33e8835bf0AB'
+    ''
   ], { initializer: 'initialize' }) as TreasuryContractType;
 
   await treasuryProxy.deployed();

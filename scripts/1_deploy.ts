@@ -1,12 +1,12 @@
 import { ethers, upgrades } from "hardhat";
 import {
   CHEELContractType,
-  // CommonBlacklistContractType,
   LEEContractType,
-  NFTContractType
+  NFTContractType,
+  BlockListContractType
 } from "../lib/ContractProvider";
 import {
-  // CommonBlacklistConfig,
+  BlockListConfig,
   LEEConfig,
   CHEELConfig,
   NFTCasesConfig,

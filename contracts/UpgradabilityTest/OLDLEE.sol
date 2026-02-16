@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 
 contract OLDLEE is ERC20PermitUpgradeable, OwnableUpgradeable {
-    uint256 public constant MAX_AMOUNT = 7 * 10**9 * 10**18;
+    uint256 public constant MAX_AMOUNT = 7 * 10 ** 9 * 10 ** 18;
     address public constant GNOSIS = 0xE6e74cA74e2209A5f2272f531627f44d34AFc299;
     uint256[50] private __gap;
 

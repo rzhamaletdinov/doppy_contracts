@@ -1,232 +1,200 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+// // SPDX-License-Identifier: MIT
+// pragma solidity ^0.8.18;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+// import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+// import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "./interfaces/ICommonBlacklist.sol";
-import "./interfaces/ICustomNFT.sol";
+// import "./interfaces/IBlockList.sol";
+// import "./interfaces/ICustomNFT.sol";
 
-contract NFT is ICustomNFT, ERC721EnumerableUpgradeable, OwnableUpgradeable {
-    event SetSaleAndTreasury(address sale, address treasury);
-    event ReceiveNFT(address indexed receiver, uint256 indexed tokenId);
-    event SetURI(string uri);
+// contract NFT is ICustomNFT, ERC721EnumerableUpgradeable, OwnableUpgradeable {
+//     // solhint-disable-next-line var-name-mixedcase
+//     string public NAME;
+//     // solhint-disable-next-line var-name-mixedcase
+//     string public SYMBOL;
+//     string private baseURI;
 
-    // solhint-disable-next-line var-name-mixedcase
-    string public NAME;
-    // solhint-disable-next-line var-name-mixedcase
-    string public SYMBOL;
-    string private baseURI;
+//     address public nftSale;
+//     address public treasury;
+//     address public constant GNOSIS_WALLET =
+//         0xC40b7fBb7160B98323159BA800e122C9DeD0668D;
+//     IBlockList public blockList;
 
-    address public nftSale;
-    address public treasury;
-    address public constant GNOSIS = 0xC40b7fBb7160B98323159BA800e122C9DeD0668D;
-    ICommonBlacklist public commonBlacklist;
+//     uint256[49] private __gap;
 
-    uint256[49] private __gap;
+//     /// @custom:oz-upgrades-unsafe-allow constructor
+//     constructor() {
+//         _disableInitializers();
+//     }
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
+//     function initialize(
+//         string memory _name,
+//         string memory _symbol
+//     ) external initializer {
+//         __Ownable_init();
+//         __ERC721_init(_name, _symbol);
+//         __ERC721Enumerable_init();
 
-    function initialize(
-        string memory _name,
-        string memory _symbol
-    )
-    external
-    initializer
-    {
-        __Ownable_init();
-        __ERC721_init(_name, _symbol);
-        __ERC721Enumerable_init();
+//         NAME = _name;
+//         SYMBOL = _symbol;
 
-        NAME = _name;
-        SYMBOL = _symbol;
+//         transferOwnership(GNOSIS_WALLET);
+//     }
 
-        transferOwnership(GNOSIS);
-    }
+//     /**
+//      * @param _to: recipient address
+//      * @param _tokenId: token id
+//      */
+//     function receiveNFT(address _to, uint256 _tokenId) external override {
+//         if (msg.sender != nftSale && msg.sender != treasury)
+//             revert NotAllowedCaller();
 
-    /**
-     * @notice Transfer or minting NFT from sale contract or treasury
-     * @param _to: recipient address
-     * @param _tokenId: token id
-     *
-     */
-    function receiveNFT(
-        address _to,
-        uint256 _tokenId
-    ) external override {
-        require(
-            msg.sender == nftSale || msg.sender == treasury,
-            "Not allowed to call contract"
-        );
+//         if (_exists(_tokenId)) {
+//             safeTransferFrom(msg.sender, _to, _tokenId);
+//         } else {
+//             _safeMint(_to, _tokenId);
+//         }
 
-        if (_exists(_tokenId)) {
-            safeTransferFrom(msg.sender, _to, _tokenId);
-        } else {
-            _safeMint(_to, _tokenId);
-        }
+//         emit ReceiveNFT(_to, _tokenId);
+//     }
 
-        emit ReceiveNFT(_to, _tokenId);
-    }
+//     /**
+//      * @param _to: recipient address
+//      * @param _tokenId: token id
+//      */
+//     function safeMint(address _to, uint256 _tokenId) external onlyOwner {
+//         _safeMint(_to, _tokenId);
+//     }
 
-    /**
-     * @notice Mint nft.
-     * @param _to: recipient address
-     * @param _tokenId: token id
-     *
-     * @dev Callable by owner
-     *
-     */
-    function safeMint(
-        address _to,
-        uint256 _tokenId
-    ) external onlyOwner {
-        _safeMint(_to, _tokenId);
-    }
+//     /**
+//      * @param _uri: new base URI
+//      */
+//     function setUri(string memory _uri) external onlyOwner {
+//         baseURI = _uri;
 
-    /**
-     * @notice Setting base uri for nft collection.
-     * @param _uri: new base uri
-     *
-     * @dev Callable by owner
-     *
-     */
-    function setUri(
-        string memory _uri
-    ) external onlyOwner {
-        baseURI = _uri;
+//         emit URIUpdated(_uri);
+//     }
 
-        emit SetURI(_uri);
-    }
+//     /**
+//      * @param _nftSale: NFT sale contract address
+//      */
+//     function setSaleContract(address _nftSale) external onlyOwner {
+//         if (_nftSale == address(0)) revert ZeroAddressNotAllowed();
 
-    /**
-     * @notice Setting NFT sale contract and treasury addresses
-     * @param _nftSale: nft sale contract address
-     * @param _treasury: treasury address
-     *
-     * @dev Callable by owner
-     *
-     */
-    function setNftSaleAndTreasury(
-        address _nftSale,
-        address _treasury
-    ) external onlyOwner {
-        require(
-            _nftSale != address(0) && _treasury != address(0),
-            "Can't set zero address"
-        );
+//         nftSale = _nftSale;
 
-        nftSale = _nftSale;
-        treasury = _treasury;
+//         emit SaleContractUpdated(_nftSale);
+//     }
 
-        emit SetSaleAndTreasury(nftSale, treasury);
-    }
+//     /**
+//      * @param _treasury: treasury contract address
+//      */
+//     function setTreasuryContract(address _treasury) external onlyOwner {
+//         if (_treasury == address(0)) revert ZeroAddressNotAllowed();
 
-    /**
-     * @notice Getting information about owned tokens by user address
-     * @param _addr: user address
-     *
-     */
-    function tokensOwnedByUser(
-        address _addr
-    )
-        external
-        view
-        returns (uint256[] memory)
-    {
-        uint256 balance = balanceOf(_addr);
-        uint256[] memory tokenIds = new uint256[](balance);
+//         treasury = _treasury;
 
-        for (uint256 i = 0; i < balance; i++) {
-            tokenIds[i] = tokenOfOwnerByIndex(_addr, i);
-        }
+//         emit TreasuryContractUpdated(_treasury);
+//     }
 
-        return tokenIds;
-    }
+//     /**
+//      * @param _addr: user address
+//      */
+//     function tokensOwnedByUser(
+//         address _addr
+//     ) external view returns (uint256[] memory) {
+//         uint256 balance = balanceOf(_addr);
+//         uint256[] memory tokenIds = new uint256[](balance);
 
-    /**
-     * @notice Setting blacklist
-     * @param _blacklist: new blacklist address
-     *
-     * @dev Callable by owner
-     *
-     */
-    function setBlacklist(
-        ICommonBlacklist _blacklist
-    ) external onlyOwner {
-        commonBlacklist = _blacklist;
-    }
+//         for (uint256 i = 0; i < balance; i++) {
+//             tokenIds[i] = tokenOfOwnerByIndex(_addr, i);
+//         }
 
-    /**
-     * @notice Return base URI
-     *
-     */
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
+//         return tokenIds;
+//     }
 
-    /**
-     * @dev Hook that is called before any token transfer. This includes minting
-     * and burning.
-     *
-     * Calling conditions:
-     *
-     * - When `from` and `to` are both non-zero, ``from``'s `tokenId` will be
-     * transferred to `to`.
-     * - When `from` is zero, `tokenId` will be minted for `to`.
-     * - When `to` is zero, ``from``'s `tokenId` will be burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override {
-        ICommonBlacklist iBlacklist = commonBlacklist;
+//     /**
+//      * @param _blockList: blocklist contract address
+//      */
+//     function setBlockList(IBlockList _blockList) external onlyOwner {
+//         blockList = _blockList;
+//     }
 
-        if (address(iBlacklist) != address(0)) {
-            require(!iBlacklist.userIsBlacklisted(_msgSender(), from, to), "NFT: Blocked by global blacklist");
-            require(!iBlacklist.userIsInternalBlacklisted(address(this), _msgSender(), from, to), "NFT: Blocked by internal blacklist");
-        }
-        super._beforeTokenTransfer(from, to, tokenId);
-    }
+//     /**
+//      * @notice Returns base URI
+//      */
+//     function _baseURI() internal view override returns (string memory) {
+//         return baseURI;
+//     }
 
-    /**
-     * @dev Approve `to` to operate on `tokenId`
-     *
-     * Emits an {Approval} event.
-     */
-    function _approve(address to, uint256 tokenId) internal virtual override {
-        ICommonBlacklist iBlacklist = commonBlacklist;
-        
-        if (address(iBlacklist) != address(0)) {
-            require(!iBlacklist.userIsBlacklisted(address(0), address(0), to), "NFT: Recipient in global blacklist");
-            require(!iBlacklist.userIsInternalBlacklisted(address(this), address(0), address(0), to), "NFT: Recipient in internal blacklist");
-        }
-        super._approve(to, tokenId);
-    }
+//     /**
+//      * @dev Hook called before any token transfer.
+//      * Includes minting and burning.
+//      */
+//     function _beforeTokenTransfer(
+//         address from,
+//         address to,
+//         uint256 tokenId
+//     ) internal virtual override {
+//         if (address(blockList) != address(0)) {
+//             if (blockList.userIsBlocked(_msgSender(), from, to))
+//                 revert BlockedByGlobalBlockList();
+//             if (
+//                 blockList.userIsInternalBlocked(
+//                     address(this),
+//                     _msgSender(),
+//                     from,
+//                     to
+//                 )
+//             ) revert BlockedByInternalBlockList();
+//         }
+//         super._beforeTokenTransfer(from, to, tokenId);
+//     }
 
-    /**
-     * @dev Approve `operator` to operate on all of `owner` tokens
-     *
-     * Emits an {ApprovalForAll} event.
-     */
-    function _setApprovalForAll(
-        address owner,
-        address operator,
-        bool approved
-    ) internal virtual override {
-        ICommonBlacklist iBlacklist = commonBlacklist;
-        
-        if (address(iBlacklist) != address(0)) {
-            require(!iBlacklist.userIsBlacklisted(owner, operator, address(0)), "NFT: Blocked by global blacklist");
-            require(!iBlacklist.userIsInternalBlacklisted(address(this), owner, operator, address(0)), "NFT: Blocked by internal blacklist");
-        }
-        super._setApprovalForAll(owner, operator, approved);
-    }
-}
+//     /**
+//      * @dev Approves `to` for operations with `tokenId`
+//      *
+//      * Emits an {Approval} event.
+//      */
+//     function _approve(address to, uint256 tokenId) internal virtual override {
+//         if (address(blockList) != address(0)) {
+//             if (blockList.userIsBlocked(address(0), address(0), to))
+//                 revert BlockedByGlobalBlockList();
+//             if (
+//                 blockList.userIsInternalBlocked(
+//                     address(this),
+//                     address(0),
+//                     address(0),
+//                     to
+//                 )
+//             ) revert BlockedByInternalBlockList();
+//         }
+//         super._approve(to, tokenId);
+//     }
+
+//     /**
+//      * @dev Approves `operator` for all operations with `owner`'s tokens
+//      *
+//      * Emits an {ApprovalForAll} event.
+//      */
+//     function _setApprovalForAll(
+//         address owner,
+//         address operator,
+//         bool approved
+//     ) internal virtual override {
+//         if (address(blockList) != address(0)) {
+//             if (blockList.userIsBlocked(owner, operator, address(0)))
+//                 revert BlockedByGlobalBlockList();
+//             if (
+//                 blockList.userIsInternalBlocked(
+//                     address(this),
+//                     owner,
+//                     operator,
+//                     address(0)
+//                 )
+//             ) revert BlockedByInternalBlockList();
+//         }
+//         super._setApprovalForAll(owner, operator, approved);
+//     }
+// }

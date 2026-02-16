@@ -4,25 +4,27 @@ import {
   constants,
   // @ts-ignore
 } from "@openzeppelin/test-helpers";
-import {contract, ethers, upgrades} from "hardhat";
-import {LEEConfig, CommonBlacklistConfig} from "../config/ContractsConfig";
-import {parseEther} from "ethers/lib/utils";
-import {Contract} from "ethers";
-import {deployCommonBlacklist} from "../utils/deployContracts";
-import {assert, expect} from "chai";
+import { ethers, upgrades } from "hardhat";
+import { LEEConfig, BlockListConfig } from "../config/ContractsConfig";
+import { parseEther } from "ethers/lib/utils";
+import { Contract } from "ethers";
+import { deployBlockList } from "../utils/deployContracts";
+import { expect } from "chai";
+import { expectCustomError } from "../utils/helpers";
 
-contract(`OLD${LEEConfig.contractName} Upgrade`, () => {
+
+describe(`OLD${LEEConfig.contractName} Upgrade`, () => {
   let oldLee: Contract;
   let lee: Contract;
-  let commonBlacklist: Contract;
+  let blockList: Contract;
   let gnosis: SignerWithAddress;
-  let blacklistGnosis: SignerWithAddress;
+  let blockListGnosis: SignerWithAddress;
   let etherHolder: SignerWithAddress;
   let deployer: SignerWithAddress;
   let receiver: SignerWithAddress;
   let badguy: SignerWithAddress;
   let moderator: SignerWithAddress;
-  let BLACKLIST_OPERATOR_ROLE: string;
+  let BLOCKLIST_ADMIN_ROLE: string;
 
   before(async () => {
     // Deploy OLDLEE
@@ -30,23 +32,23 @@ contract(`OLD${LEEConfig.contractName} Upgrade`, () => {
     oldLee = await upgrades.deployProxy(OLDLEE, [], { initializer: "initialize" });
     await oldLee.deployed();
 
-    // Deploy Common Blacklist
-    commonBlacklist = await deployCommonBlacklist();
+    // Deploy BlockList
+    blockList = await deployBlockList();
 
     // Creating GNOSIS
     [etherHolder, deployer, receiver, badguy, moderator] = await ethers.getSigners();
     gnosis = await ethers.getImpersonatedSigner(LEEConfig.multiSigAddress)
-    blacklistGnosis = await ethers.getImpersonatedSigner(CommonBlacklistConfig.multiSigAddress)
+    blockListGnosis = await ethers.getImpersonatedSigner(BlockListConfig.multiSigAddress)
     await etherHolder.sendTransaction({
       to: LEEConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
     })
     await etherHolder.sendTransaction({
-      to: CommonBlacklistConfig.multiSigAddress,
+      to: BlockListConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
     })
 
-    BLACKLIST_OPERATOR_ROLE = await commonBlacklist.BLACKLIST_OPERATOR_ROLE();
+    BLOCKLIST_ADMIN_ROLE = await blockList.BLOCKLIST_ADMIN_ROLE();
   });
 
   it("Mint tokens", async function () {
@@ -68,35 +70,35 @@ contract(`OLD${LEEConfig.contractName} Upgrade`, () => {
     lee = await upgrades.upgradeProxy(oldLee.address, LEE)
   });
 
-  it("Setting blacklist", async function () {
-    await lee.connect(gnosis).setBlacklist(commonBlacklist.address);
+  it("Setting blockList", async function () {
+    await lee.connect(gnosis).setBlockList(blockList.address);
   });
 
-  it("Grant BLACKLIST_OPERATOR_ROLE for moderator", async function () {
-    await commonBlacklist.connect(blacklistGnosis).grantRole(
-      BLACKLIST_OPERATOR_ROLE,
+  it("Grant BLOCKLIST_ADMIN_ROLE for moderator", async function () {
+    await blockList.connect(blockListGnosis).grantRole(
+      BLOCKLIST_ADMIN_ROLE,
       moderator.address
     );
   });
 
-  it("Adding badguy for common blacklist", async function () {
-    expect((await lee.commonBlacklist()).toUpperCase()).to.equal(commonBlacklist.address.toUpperCase());
+  it("Adding badguy for blocklist", async function () {
+    expect((await lee.blockList()).toUpperCase()).to.equal(blockList.address.toUpperCase());
 
-    await commonBlacklist.connect(moderator).addUsersToBlacklist(
+    await blockList.connect(moderator).addUsersToBlockList(
       [badguy.address]
     );
 
-    assert.equal(await commonBlacklist.userIsBlacklisted(badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS), true);
+    expect(await blockList.userIsBlocked(badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
   });
 
 
   it("New function added works", async function () {
-    await expectRevert(
+    await expectCustomError(
       lee.connect(badguy).transfer(
         deployer.address,
         parseEther("1000000")
       ),
-      "LEE: Blocked by global blacklist"
+      "BlockedByGlobalBlockList"
     );
 
     await expectRevert(
@@ -108,26 +110,14 @@ contract(`OLD${LEEConfig.contractName} Upgrade`, () => {
       "ERC20: insufficient allowance"
     );
 
-    assert.equal(
-      String(await lee.balanceOf(deployer.address)),
-      parseEther("1000000").toString()
-    );
+    expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-    assert.equal(
-      String(await lee.balanceOf(badguy.address)),
-      parseEther("1000000").toString()
-    );
+    expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
   });
 
   it("Balancies is correct", async function () {
-    assert.equal(
-      String(await lee.balanceOf(deployer.address)),
-      parseEther("1000000").toString()
-    );
+    expect(await lee.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-    assert.equal(
-      String(await lee.balanceOf(badguy.address)),
-      parseEther("1000000").toString()
-    );
+    expect(await lee.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
   });
 });

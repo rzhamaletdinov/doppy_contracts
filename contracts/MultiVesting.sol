@@ -1,80 +1,72 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import "./interfaces/IVesting.sol";
 
-/// @title MultiVesting
-/// @notice Smart contract used to create vesting schedules
-contract MultiVesting is IVesting, Ownable {
-    using SafeERC20 for IERC20;
+contract MultiVesting is IVesting, OwnableUpgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event SetSeller(address newSeller);
-    event Vested(address indexed beneficiary, uint256 amount);
-    event EmergencyVest(uint256 amount);
-    event UpdateBeneficiary(
-        address indexed oldBeneficiary,
-        address indexed newBeneficiary
-    );
-    event DisableEarlyWithdraw(address owner);
+    address public constant GNOSIS_WALLET = 0x42DA5e446453319d4076c91d745E288BFef264D0;
+    
+    IERC20Upgradeable public token;
+    uint256 public vestingAmount;
+    address public saleContract;
+    uint256 public beneficiaryUpdateDelay;
+    uint256 public beneficiaryUpdateValidity;
 
-    IERC20 public immutable token;
-    uint256 public sumVesting;
-    address public seller;
-    address public constant GNOSIS = 0x42DA5e446453319d4076c91d745E288BFef264D0;
-    uint256 public immutable updateBeneficiaryMin;
-    uint256 public immutable updateBeneficiaryMax;
+    mapping(address beneficiary => uint256 amount) public released;
+    mapping(address beneficiary => Beneficiary) public beneficiary;
 
-    mapping(address => uint256) public released;
-    mapping(address => Beneficiary) public beneficiary;
+    bool public beneficiaryUpdateEnabled;
+    bool public emergencyWithdrawEnabled;
 
-    bool public changeBeneficiaryAllowed;
-    bool public earlyWithdrawAllowed;
+    mapping(address beneficiary => UpdateBeneficiaryLock) public updateBeneficiaryLock;
 
-    struct UpdateBeneficiaryLock {
-        address oldBeneficiary;
-        address newBeneficiary;
-        uint256 timestamp;
+    uint256[50] private __gap;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
-    mapping(address => UpdateBeneficiaryLock) public updateBeneficiaryLock;
+    /**
+     * @param _token ERC20 token address
+     * @param _beneficiaryUpdateEnabled Beneficiary change allowed
+     * @param _emergencyWithdrawEnabled Early withdrawal allowed
+     * @param _beneficiaryUpdateDelay Minimum update beneficiary period
+     * @param _beneficiaryUpdateValidity Maximum update beneficiary period
+     */
+    function initialize(
+        IERC20Upgradeable _token,
+        bool _beneficiaryUpdateEnabled,
+        bool _emergencyWithdrawEnabled,
+        uint256 _beneficiaryUpdateDelay,
+        uint256 _beneficiaryUpdateValidity
+    ) external initializer {
+        if (address(_token) == address(0)) revert ZeroAddress();
 
-    constructor(
-        IERC20 _token,
-        bool _changeBeneficiaryAllowed,
-        bool _earlyWithdrawAllowed,
-        uint256 _updateBeneficiaryMin,
-        uint256 _updateBeneficiaryMax
-    ) {
-        require(address(_token) != address(0), "Can't set zero address");
+        __Ownable_init();
+
         token = _token;
+        beneficiaryUpdateEnabled = _beneficiaryUpdateEnabled;
+        emergencyWithdrawEnabled = _emergencyWithdrawEnabled;
+        beneficiaryUpdateDelay = _beneficiaryUpdateDelay;
+        beneficiaryUpdateValidity = _beneficiaryUpdateValidity;
 
-        changeBeneficiaryAllowed = _changeBeneficiaryAllowed;
-        earlyWithdrawAllowed = _earlyWithdrawAllowed;
-        updateBeneficiaryMin = _updateBeneficiaryMin;
-        updateBeneficiaryMax = _updateBeneficiaryMax;
-
-        transferOwnership(GNOSIS);
+        transferOwnership(GNOSIS_WALLET);
     }
 
-    /// @notice Sets seller, who can call vest function
-    function setSeller(address _addr) external onlyOwner {
-        require(_addr != address(0), "Can't set zero address");
-        seller = _addr;
-
-        emit SetSeller(seller);
-    }
-
-    /// @notice Creates vesting schedule for one person or updates existing one
-    /// @param _cliff Duration in seconds
-    /// @param _durationSeconds Duration in seconds
-    /// @param _startTimestamp Timestamp
-    /// @param _amount Amount of tokens,
-    /// if _amount is 0, we update existing schedule
-    /// if _amount  > 0, we create new vesting schedule
-
+    /**
+     * @param _beneficiaryAddress Beneficiary address
+     * @param _startTimestamp Start timestamp
+     * @param _durationSeconds Duration in seconds
+     * @param _amount Amount of tokens,
+     * @param _cliff Cliff duration in seconds
+     */
     function vest(
         address _beneficiaryAddress,
         uint256 _startTimestamp,
@@ -82,80 +74,174 @@ contract MultiVesting is IVesting, Ownable {
         uint256 _amount,
         uint256 _cliff
     ) external override {
-        require(
-            sumVesting + _amount <= token.balanceOf(address(this)),
-            "Not enough tokens"
-        );
-        sumVesting += _amount;
-        require(msg.sender == seller, "Only sale contract can call");
-        require(
-            _beneficiaryAddress != address(0),
-            "beneficiary is zero address"
-        );
-
-        require(_durationSeconds > 0, "Duration must be above 0");
-        require(_cliff > 0, "Cliff must be above 0");
-
-        if (_amount > 0) { //trying to create new schedule
-            require(
-                beneficiary[_beneficiaryAddress].amount == 0,
-                "User is already a beneficiary"
+        if (vestingAmount + _amount > token.balanceOf(address(this)))
+            revert InsufficientTokens(
+                token.balanceOf(address(this)),
+                vestingAmount + _amount
             );
-        } else { //trying to update existing one
-            require(
-                beneficiary[_beneficiaryAddress].amount > 0,
-                "User is not beneficiary"
-            );
-            require(
+        if (_msgSender() != saleContract) revert OnlySaleContract();
+        if (_beneficiaryAddress == address(0)) revert ZeroAddress();
+        if (_durationSeconds == 0) revert InvalidDuration();
+        if (_cliff == 0) revert InvalidCliff();
+
+        if (_amount > 0) {
+            if (beneficiary[_beneficiaryAddress].amount != 0)
+                revert BeneficiaryAlreadyExists();
+        } else {
+            if (beneficiary[_beneficiaryAddress].amount == 0)
+                revert UserIsNotBeneficiary();
+            if (
                 beneficiary[_beneficiaryAddress].start +
-                    beneficiary[_beneficiaryAddress].cliff >=
-                    _startTimestamp + _cliff,
-                "New cliff must be no later than older one"
-            );
+                    beneficiary[_beneficiaryAddress].cliff <
+                _startTimestamp + _cliff
+            ) revert CliffCannotBeIncreased();
         }
+
+        vestingAmount += _amount;
 
         beneficiary[_beneficiaryAddress].start = _startTimestamp;
         beneficiary[_beneficiaryAddress].duration = _durationSeconds;
         beneficiary[_beneficiaryAddress].cliff = _cliff;
         beneficiary[_beneficiaryAddress].amount += _amount;
 
-        emit Vested(_beneficiaryAddress, _amount);
+        emit ScheduleCreated(_beneficiaryAddress, _amount);
     }
 
-    /// @notice Returns tokens that can be released from vesting.
+    /**
+     * @notice Returns tokens that can be released from vesting.
+     * @param _beneficiary Address of the beneficiary
+     */
     function release(address _beneficiary) external override {
         (uint256 _releasableAmount, ) = _releasable(
             _beneficiary,
             block.timestamp
         );
 
-        require(_releasableAmount > 0, "Can't claim yet!");
+        if (_releasableAmount == 0) revert NothingToClaim();
 
         released[_beneficiary] += _releasableAmount;
-        token.safeTransfer(_beneficiary, _releasableAmount);
+        vestingAmount -= _releasableAmount;
 
-        sumVesting -= _releasableAmount;
+        token.safeTransfer(_beneficiary, _releasableAmount);
 
         emit Released(_releasableAmount, _beneficiary);
     }
 
-    /// @notice Returns amount of tokens that can be released from vesting at given timestamp.
-    /// @return canClaim how much user can claim if they call release function
-    /// @return earnedAmount how much user has earned
-    function releasable(address _beneficiary, uint256 _timestamp)
-        external
-        view
-        override
-        returns (uint256 canClaim, uint256 earnedAmount)
-    {
+    /**
+     * @notice Update beneficiary
+     * @param _oldBeneficiary Address of the old beneficiary
+     * @param _newBeneficiary Address of the new beneficiary
+     */
+    function updateBeneficiary(
+        address _oldBeneficiary,
+        address _newBeneficiary
+    ) external {
+        if (!beneficiaryUpdateEnabled) revert OptionDisabled();
+        if (_msgSender() != owner() && _msgSender() != _oldBeneficiary)
+            revert Unauthorized();
+
+        if (
+            updateBeneficiaryLock[_oldBeneficiary].timestamp != 0 &&
+            updateBeneficiaryLock[_oldBeneficiary].timestamp +
+                beneficiaryUpdateValidity <=
+            block.timestamp
+        ) revert UpdatePending();
+
+        if (beneficiary[_oldBeneficiary].amount == 0)
+            revert UserIsNotBeneficiary();
+        if (beneficiary[_newBeneficiary].amount != 0)
+            revert BeneficiaryAlreadyExists();
+
+        updateBeneficiaryLock[_oldBeneficiary] = UpdateBeneficiaryLock(
+            _oldBeneficiary,
+            _newBeneficiary,
+            block.timestamp
+        );
+    }
+
+    /**
+     * @param _oldBeneficiary Address of the old beneficiary
+     */
+    function finishUpdateBeneficiary(address _oldBeneficiary) external {
+        if (!beneficiaryUpdateEnabled) revert OptionDisabled();
+
+        UpdateBeneficiaryLock memory it = updateBeneficiaryLock[
+            _oldBeneficiary
+        ];
+
+        if (it.timestamp == 0) revert NoPendingUpdate();
+
+        if (beneficiary[it.oldBeneficiary].amount == 0)
+            revert UserIsNotBeneficiary();
+        if (beneficiary[it.newBeneficiary].amount != 0)
+            revert BeneficiaryAlreadyExists();
+
+        if (block.timestamp <= it.timestamp + beneficiaryUpdateDelay)
+            revert UpdateLockPeriodNotPassed();
+        if (block.timestamp >= it.timestamp + beneficiaryUpdateValidity)
+            revert UpdateLockPeriodExpired();
+        if (msg.sender != owner() && msg.sender != it.newBeneficiary)
+            revert Unauthorized();
+
+        released[it.newBeneficiary] = released[it.oldBeneficiary];
+        beneficiary[it.newBeneficiary] = beneficiary[it.oldBeneficiary];
+
+        delete released[it.oldBeneficiary];
+        delete beneficiary[it.oldBeneficiary];
+        delete updateBeneficiaryLock[it.oldBeneficiary];
+
+        emit BeneficiaryUpdated(it.oldBeneficiary, it.newBeneficiary);
+    }
+
+    /**
+     * @param _saleContract Address of the seller
+     */
+    function setSaleContract(address _saleContract) external onlyOwner {
+        if (_saleContract == address(0)) revert ZeroAddress();
+        saleContract = _saleContract;
+
+        emit SaleContractUpdated(saleContract);
+    }
+
+    /**
+     * @param _token ERC20 token address
+     */
+    function emergencyVest(
+        IERC20Upgradeable _token
+    ) external override onlyOwner {
+        if (!emergencyWithdrawEnabled) revert OptionDisabled();
+
+        uint256 amount = _token.balanceOf(address(this));
+        _token.safeTransfer(owner(), amount);
+
+        if (address(token) == address(_token)) vestingAmount = 0;
+
+        emit EmergencyWithdrawn(amount);
+    }
+
+    function disableEarlyWithdraw() external onlyOwner {
+        emergencyWithdrawEnabled = false;
+
+        emit EarlyWithdrawDisabled(msg.sender);
+    }
+
+    /**
+     * @param _beneficiary Address of the beneficiary
+     * @param _timestamp Timestamp
+     * @return canClaim how much user can claim if they call release function
+     * @return earnedAmount how much user has earned
+     */
+    function releasable(
+        address _beneficiary,
+        uint256 _timestamp
+    ) external view override returns (uint256 canClaim, uint256 earnedAmount) {
         return _releasable(_beneficiary, _timestamp);
     }
 
-    function _releasable(address _beneficiary, uint256 _timestamp)
-        internal
-        view
-        returns (uint256 canClaim, uint256 earnedAmount)
-    {
+    function _releasable(
+        address _beneficiary,
+        uint256 _timestamp
+    ) internal view returns (uint256 canClaim, uint256 earnedAmount) {
         (canClaim, earnedAmount) = _vestingSchedule(
             _beneficiary,
             beneficiary[_beneficiary].amount,
@@ -165,23 +251,23 @@ contract MultiVesting is IVesting, Ownable {
         else canClaim -= released[_beneficiary];
     }
 
-    /// @notice Returns amount of tokens that can be released from vesting at given timestamp.
-    /// @return vestedAmount how much was earned
-    /// @return maxAmount how much tokens can be earned
-    function vestedAmountBeneficiary(address _beneficiary, uint256 _timestamp)
-        external
-        view
-        override
-        returns (uint256 vestedAmount, uint256 maxAmount)
-    {
+    /**
+     * @param _beneficiary Address of the beneficiary
+     * @param _timestamp Timestamp
+     * @return vestedAmount how much was earned
+     * @return maxAmount how much tokens can be earned
+     */
+    function vestedAmountBeneficiary(
+        address _beneficiary,
+        uint256 _timestamp
+    ) external view override returns (uint256 vestedAmount, uint256 maxAmount) {
         return _vestedAmountBeneficiary(_beneficiary, _timestamp);
     }
 
-    function _vestedAmountBeneficiary(address _beneficiary, uint256 _timestamp)
-        internal
-        view
-        returns (uint256 vestedAmount, uint256 maxAmount)
-    {
+    function _vestedAmountBeneficiary(
+        address _beneficiary,
+        uint256 _timestamp
+    ) internal view returns (uint256 vestedAmount, uint256 maxAmount) {
         maxAmount = beneficiary[_beneficiary].amount;
         (, vestedAmount) = _vestingSchedule(
             _beneficiary,
@@ -214,90 +300,5 @@ contract MultiVesting is IVesting, Ownable {
             ) return (0, res);
             else return (res, res);
         }
-    }
-
-    /// @notice Update beneficiary
-    function updateBeneficiary(address _oldBeneficiary, address _newBeneficiary)
-        external
-    {
-        require(changeBeneficiaryAllowed, "Option not allowed");
-        require(
-            msg.sender == owner() || msg.sender == _oldBeneficiary,
-            "Not allowed to change"
-        );
-
-        require(
-            updateBeneficiaryLock[_oldBeneficiary].timestamp == 0 ||
-                updateBeneficiaryLock[_oldBeneficiary].timestamp +
-                    updateBeneficiaryMax >
-                block.timestamp,
-            "Update pending"
-        );
-        require(beneficiary[_oldBeneficiary].amount > 0, "Not a beneficiary");
-        require(
-            beneficiary[_newBeneficiary].amount == 0,
-            "Already a beneficiary"
-        );
-
-        updateBeneficiaryLock[_oldBeneficiary] = UpdateBeneficiaryLock(
-            _oldBeneficiary,
-            _newBeneficiary,
-            block.timestamp
-        );
-    }
-
-    function finishUpdateBeneficiary(address _oldBeneficiary) external {
-        require(changeBeneficiaryAllowed, "Option not allowed");
-
-        UpdateBeneficiaryLock memory it = updateBeneficiaryLock[
-            _oldBeneficiary
-        ];
-        require(beneficiary[it.oldBeneficiary].amount > 0, "Not a beneficiary");
-        require(
-            beneficiary[it.newBeneficiary].amount == 0,
-            "Already a beneficiary"
-        );
-
-        require(it.timestamp != 0, "No pending updates");
-        require(
-            block.timestamp > it.timestamp + updateBeneficiaryMin,
-            "Required time hasn't passed"
-        );
-        require(
-            block.timestamp < it.timestamp + updateBeneficiaryMax,
-            "Time passed, request new update"
-        );
-        require(
-            msg.sender == owner() || msg.sender == it.newBeneficiary,
-            "Not allowed to change"
-        );
-
-        released[it.newBeneficiary] = released[it.oldBeneficiary];
-        beneficiary[it.newBeneficiary] = beneficiary[it.oldBeneficiary];
-
-        delete released[it.oldBeneficiary];
-        delete beneficiary[it.oldBeneficiary];
-        delete updateBeneficiaryLock[it.oldBeneficiary];
-
-        emit UpdateBeneficiary(it.oldBeneficiary, it.newBeneficiary);
-    }
-
-    /// @notice Emergency withdrawal for tokens
-    function emergencyVest(IERC20 _token) external override onlyOwner {
-        require(earlyWithdrawAllowed, "Option not allowed");
-
-        uint256 amount = _token.balanceOf(address(this));
-        _token.safeTransfer(owner(), amount);
-
-        if (address(token) == address(_token)) sumVesting = 0;
-
-        emit EmergencyVest(amount);
-    }
-
-    /// @notice Disable withdrawal for tokens
-    function disableEarlyWithdraw() external onlyOwner {
-        earlyWithdrawAllowed = false;
-
-        emit DisableEarlyWithdraw(msg.sender);
     }
 }

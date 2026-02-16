@@ -1,25 +1,39 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import { verify } from "./19_verify";
-
-const CHEEL_TOKEN = "0x1F1C90aEb2fd13EA972F0a71e35c0753848e3DB0"
-const UPDATE_BENEFICIARY_MIN_SECONDS = 900;
-const UPDATE_BENEFICIARY_MAX_SECONDS = 1800;
-const UPDATE_BENEFICIARY_ALLOWED = true;
-const EMERGENCY_WITHDRAWAL_ALLOWED = false;
-
+import { MultiVestingConfig, CHEELConfig } from "../config/ContractsConfig";
+import { MultiVestingContractType } from "../lib/ContractProvider";
 
 async function main() {
-    const MV = await ethers.getContractFactory("MultiVesting");
-    const multiVesting = await MV.deploy(CHEEL_TOKEN, UPDATE_BENEFICIARY_ALLOWED,
-        EMERGENCY_WITHDRAWAL_ALLOWED, UPDATE_BENEFICIARY_MIN_SECONDS, UPDATE_BENEFICIARY_MAX_SECONDS);
-    await multiVesting.deployed();
-    console.log("MultiVesting address:", multiVesting.address);
+    console.log('Deploying MultiVesting contract...');
 
-    await verify(multiVesting.address, [CHEEL_TOKEN, UPDATE_BENEFICIARY_ALLOWED,
-        EMERGENCY_WITHDRAWAL_ALLOWED, UPDATE_BENEFICIARY_MIN_SECONDS, UPDATE_BENEFICIARY_MAX_SECONDS]);
+    const MV = await ethers.getContractFactory(MultiVestingConfig.contractName);
+
+    // Use configured CHEEL address if available, otherwise fallback to CHEELConfig proxy address
+    const cheelAddress = MultiVestingConfig.cheelTokenAddress || CHEELConfig.proxyContractAddress;
+
+    const multiVesting = await upgrades.deployProxy(MV, [
+        cheelAddress,
+        MultiVestingConfig.beneficiaryUpdateEnabled,
+        MultiVestingConfig.emergencyWithdrawEnabled,
+        MultiVestingConfig.beneficiaryUpdateDelaySeconds,
+        MultiVestingConfig.beneficiaryUpdateValiditySeconds
+    ], { initializer: "initialize" }) as MultiVestingContractType;
+
+    await multiVesting.deployed();
+
+    const implAddress = await upgrades.erc1967.getImplementationAddress(multiVesting.address);
+    const adminAddress = await upgrades.erc1967.getAdminAddress(multiVesting.address);
+
+    console.log("MultiVesting implementation deployed to:", implAddress);
+    console.log("MultiVesting proxy deployed to:", multiVesting.address);
+    console.log("MultiVesting admin deployed to:", adminAddress);
+
+    console.log("Verification for MultiVesting contract...");
+    await verify(implAddress, []);
+    console.log("MultiVesting contract is verified");
 }
 
 main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
-  });
+});

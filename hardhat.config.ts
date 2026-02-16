@@ -2,16 +2,12 @@ import * as dotenv from "dotenv";
 
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-solhint";
-import "@nomiclabs/hardhat-truffle5";
+import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
-import "hardhat-prettier"
 import '@openzeppelin/hardhat-upgrades';
-import "@rumblefishdev/hardhat-kms-signer";
 
 dotenv.config();
 
@@ -30,7 +26,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.17",
+    version: "0.8.18",
     settings: {
       optimizer: {
         enabled: true,
@@ -55,11 +51,6 @@ const config: HardhatUserConfig = {
     goerli: {
       url: process.env.GOERLI_URL || "",
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    },
-    truffle: {
-      url: "http://localhost:24012/rpc",
-      timeout: 60000,
-      gasMultiplier: 1,
     },
   },
   gasReporter: {
