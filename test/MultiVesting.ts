@@ -38,13 +38,17 @@ describe("MultiVesting", function () {
     cheel = await deployCHEEL()
     vesting = await deployMultiVesting(cheel.address, true, true)
 
-    await vesting.connect(gnosisMV).setSaleContract(await owner.getAddress())
+    await vesting.connect(gnosisMV).setManager(await owner.getAddress())
   })
 
   it("Vest and vestingAmount work", async () => {
     expect(await vesting.vestingAmount()).to.be.equal(0)
     await expectCustomError(
-      vesting.vest(await owner.getAddress(), await currentTimestamp() - 1, 1000, amount, 100),
+      vesting.createVestingSchedule(await owner.getAddress(), await currentTimestamp(), 1000, 0, 100),
+      "InvalidAmount"
+    )
+    await expectCustomError(
+      vesting.createVestingSchedule(await owner.getAddress(), await currentTimestamp() - 1, 1000, amount, 100),
       "InsufficientTokens"
     )
     expect(await vesting.vestingAmount()).to.be.equal(0)
@@ -52,17 +56,41 @@ describe("MultiVesting", function () {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
 
     expect(await vesting.vestingAmount()).to.be.equal(0)
-    await vesting.vest(await owner.getAddress(), await currentTimestamp() - 1, 1000, amount, 100)
+    await vesting.createVestingSchedule(await owner.getAddress(), await currentTimestamp() - 1, 1000, amount, 100)
+    expect(await vesting.vestingAmount()).to.be.equal(amount)
+
     expect(await vesting.vestingAmount()).to.be.equal(amount)
 
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(vesting.address, await currentTimestamp() - 1, 1000, amount, 100)
+    await vesting.createVestingSchedule(vesting.address, await currentTimestamp() - 1, 1000, amount, 100)
     expect(await vesting.vestingAmount()).to.be.equal(amount * 2)
+
+    // Validation tests
+    await expectCustomError(
+      vesting.createVestingSchedule(ethers.constants.AddressZero, await currentTimestamp(), 1000, 100, 100),
+      "ZeroAddress"
+    )
+    await expectCustomError(
+      vesting.createVestingSchedule(await owner.getAddress(), await currentTimestamp(), 0, 100, 100),
+      "InvalidDuration"
+    )
+    await expectCustomError(
+      vesting.createVestingSchedule(await owner.getAddress(), await currentTimestamp(), 1000, 100, 0),
+      "InvalidCliff"
+    )
+    await expectCustomError(
+      vesting.createVestingSchedule(await owner.getAddress(), await currentTimestamp(), 1000, 100, 100),
+      "BeneficiaryAlreadyExists"
+    )
+    await expectCustomError(
+      vesting.connect(receiver4).createVestingSchedule(await owner.getAddress(), await currentTimestamp(), 1000, 100, 100),
+      "OnlyManager"
+    )
   })
 
   it("Cliff works", async () => {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
+    await vesting.createVestingSchedule(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     await increaseTime(50)
     expect((await vesting.releasable(await owner.getAddress(), await currentTimestamp()))[0]).to.be.equal(0)
@@ -75,7 +103,7 @@ describe("MultiVesting", function () {
 
   it("Releasable And VestedAmount works works", async () => {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
+    await vesting.createVestingSchedule(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     await increaseTime(100)
 
@@ -110,7 +138,7 @@ describe("MultiVesting", function () {
 
   it("Blocking works", async () => {
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(vesting.address, await currentTimestamp() - 1, 1000, amount, 100)
+    await vesting.createVestingSchedule(vesting.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     let fakeToken = await deployCHEEL()
 
@@ -137,7 +165,7 @@ describe("MultiVesting", function () {
   it("change beneficiary works", async () => {
     console.log(await cheel.balanceOf(vesting.address), await vesting.vestingAmount());
     await cheel.connect(gnosisCheel).mint(vesting.address, amount * 2)
-    await vesting.connect(owner).vest(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
+    await vesting.connect(owner).createVestingSchedule(owner.address, await currentTimestamp() - 1, 1000, amount, 100)
 
     console.log(await cheel.balanceOf(vesting.address), await vesting.vestingAmount());
     await expectCustomError(
@@ -145,7 +173,7 @@ describe("MultiVesting", function () {
       "UserIsNotBeneficiary"
     )
     await vesting.connect(owner).updateBeneficiary(owner.address, receiver4.address)
-    await vesting.vest(await receiver2.getAddress(), await currentTimestamp(), 1, amount, 1)
+    await vesting.createVestingSchedule(await receiver2.getAddress(), await currentTimestamp(), 1, amount, 1)
     await expectCustomError(
       vesting.connect(receiver2).updateBeneficiary(receiver2.address, owner.address),
       "BeneficiaryAlreadyExists"
@@ -203,29 +231,43 @@ describe("MultiVesting", function () {
   it("vesting update and create", async () => {
     console.log("can't update non-existing");
     await expectCustomError(
-      vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 50),
+      vesting.updateVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, 50),
       "UserIsNotBeneficiary"
     )
 
     console.log("create vesting");
     await cheel.connect(gnosisCheel).mint(vesting.address, 1000)
-    await vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, amount, 100)
+    await vesting.createVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, amount, 100)
 
     console.log("can't update vesting when balance and _amount > 0");
     await cheel.connect(gnosisCheel).mint(vesting.address, 1000)
     await expectCustomError(
-      vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, amount, 50),
+      vesting.createVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, amount, 50),
       "BeneficiaryAlreadyExists"
     )
 
     console.log("can't update vest when cliff more than older and _amount = 0");
     await expectCustomError(
-      vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 150),
+      vesting.updateVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, 150),
       "CliffCannotBeIncreased"
     )
 
     console.log("can update vest when cliff less than older and amount = 0");
-    await vesting.vest(await receiver4.getAddress(), await currentTimestamp(), 1000, 0, 50)
+    await vesting.updateVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, 50)
+
+    // Validation tests for updateVestingSchedule
+    await expectCustomError(
+      vesting.updateVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 0, 50),
+      "InvalidDuration"
+    )
+    await expectCustomError(
+      vesting.updateVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, 0),
+      "InvalidCliff"
+    )
+    await expectCustomError(
+      vesting.connect(receiver4).updateVestingSchedule(await receiver4.getAddress(), await currentTimestamp(), 1000, 50),
+      "OnlyManager"
+    )
   })
 
   it("Vesting created for passed timestamp (duration >= cliff)", async () => {
@@ -233,10 +275,10 @@ describe("MultiVesting", function () {
     let oldTimestamp = currentTime - getDay(60)
 
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(receiver.address, oldTimestamp, getDay(60), amount, getDay(60) + 10)
+    await vesting.createVestingSchedule(receiver.address, oldTimestamp, getDay(60), amount, getDay(60) + 10)
 
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(receiver2.address, oldTimestamp, getDay(60), amount, getDay(60) - 10)
+    await vesting.createVestingSchedule(receiver2.address, oldTimestamp, getDay(60), amount, getDay(60) - 10)
 
     expect((await vesting.releasable(await receiver.getAddress(), currentTime - 5))[0].toNumber()).to.be.equal(0)
     expect((await vesting.releasable(await receiver2.getAddress(), currentTime - 5))[0].toNumber()).to.be.greaterThanOrEqual(950)
@@ -250,7 +292,7 @@ describe("MultiVesting", function () {
     let oldTimestamp = currentTime - getDay(60)
 
     await cheel.connect(gnosisCheel).mint(vesting.address, amount)
-    await vesting.vest(receiver.address, oldTimestamp, getDay(60), amount, getDay(70))
+    await vesting.createVestingSchedule(receiver.address, oldTimestamp, getDay(60), amount, getDay(70))
 
     //should work
     expect((await vesting.releasable(await receiver.getAddress(), getDay(69)))[0].toNumber()).to.be.equal(0)
@@ -261,7 +303,7 @@ describe("MultiVesting", function () {
     let currentTime = await currentTimestamp()
 
     await cheel.connect(gnosisCheel).mint(vesting.address, amount * 3)
-    await vesting.connect(owner).vest(receiver.address, currentTime, getDay(3), amount, getDay(5))
+    await vesting.connect(owner).createVestingSchedule(receiver.address, currentTime, getDay(3), amount, getDay(5))
 
     expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), currentTime))[1].toNumber()).to.be.equal(amount)
 
@@ -272,8 +314,8 @@ describe("MultiVesting", function () {
     expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(0)
     expect((await vesting.vestedAmountBeneficiary(await receiver2.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount)
 
-    await vesting.connect(owner).vest(receiver.address, currentTime, getDay(3), amount * 2, getDay(5) + 2)
-    await vesting.connect(owner).vest(receiver2.address, currentTime, 2, 0, 2)
+    await vesting.connect(owner).createVestingSchedule(receiver.address, currentTime, getDay(3), amount * 2, getDay(5) + 2)
+    await vesting.connect(owner).updateVestingSchedule(receiver2.address, currentTime, 2, 2)
 
     expect((await vesting.vestedAmountBeneficiary(await receiver.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount * 2)
     expect((await vesting.vestedAmountBeneficiary(await receiver2.getAddress(), await currentTimestamp()))[1].toNumber()).to.be.equal(amount)

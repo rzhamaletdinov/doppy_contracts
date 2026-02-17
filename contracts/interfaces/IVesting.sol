@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 interface IVesting {
     // Events
     event Released(uint256 amount, address to);
-    event SaleContractUpdated(address newSaleContract);
+    event ManagerUpdated(address newManager);
     event ScheduleCreated(address indexed beneficiary, uint256 amount);
     event EmergencyWithdrawn(uint256 amount);
     event BeneficiaryUpdated(
@@ -15,10 +15,17 @@ interface IVesting {
     );
     event EarlyWithdrawDisabled(address owner);
 
+    event ScheduleUpdated(
+        address indexed beneficiary,
+        uint256 newStart,
+        uint256 newDuration,
+        uint256 newCliff
+    );
+
     // Errors
     error ZeroAddress();
     error InsufficientTokens(uint256 available, uint256 required);
-    error OnlySaleContract();
+    error OnlyManager();
     error InvalidDuration();
     error InvalidCliff();
     error BeneficiaryAlreadyExists();
@@ -31,6 +38,7 @@ interface IVesting {
     error NoPendingUpdate();
     error UpdateLockPeriodNotPassed();
     error UpdateLockPeriodExpired();
+    error InvalidAmount();
 
     // Structs
     struct Beneficiary {
@@ -47,12 +55,19 @@ interface IVesting {
     }
 
     // Functions
-    function vest(
-        address beneficiaryAddress,
-        uint256 startTimestamp,
-        uint256 durationSeconds,
+    function createVestingSchedule(
+        address beneficiary,
+        uint256 start,
+        uint256 duration,
         uint256 amount,
         uint256 cliff
+    ) external;
+
+    function updateVestingSchedule(
+        address beneficiary,
+        uint256 newStart,
+        uint256 newDuration,
+        uint256 newCliff
     ) external;
 
     function release(address _beneficiary) external;
