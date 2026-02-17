@@ -11,10 +11,10 @@ contract MultiVesting is IVesting, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     address public constant GNOSIS_WALLET = 0x42DA5e446453319d4076c91d745E288BFef264D0;
-    
+
     IERC20Upgradeable public token;
     uint256 public vestingAmount;
-    address public saleContract;
+    address public manager;
     uint256 public beneficiaryUpdateDelay;
     uint256 public beneficiaryUpdateValidity;
 
@@ -24,7 +24,8 @@ contract MultiVesting is IVesting, OwnableUpgradeable {
     bool public beneficiaryUpdateEnabled;
     bool public emergencyWithdrawEnabled;
 
-    mapping(address beneficiary => UpdateBeneficiaryLock) public updateBeneficiaryLock;
+    mapping(address beneficiary => UpdateBeneficiaryLock)
+        public updateBeneficiaryLock;
 
     uint256[50] private __gap;
 
@@ -51,60 +52,86 @@ contract MultiVesting is IVesting, OwnableUpgradeable {
 
         __Ownable_init();
 
-        token = _token;
-        beneficiaryUpdateEnabled = _beneficiaryUpdateEnabled;
-        emergencyWithdrawEnabled = _emergencyWithdrawEnabled;
         beneficiaryUpdateDelay = _beneficiaryUpdateDelay;
         beneficiaryUpdateValidity = _beneficiaryUpdateValidity;
+        beneficiaryUpdateEnabled = _beneficiaryUpdateEnabled;
+        emergencyWithdrawEnabled = _emergencyWithdrawEnabled;
+        token = _token;
 
         transferOwnership(GNOSIS_WALLET);
     }
 
     /**
-     * @param _beneficiaryAddress Beneficiary address
-     * @param _startTimestamp Start timestamp
-     * @param _durationSeconds Duration in seconds
-     * @param _amount Amount of tokens,
+     * @notice Creates vesting schedule for one person
+     * @param _beneficiary Beneficiary address
+     * @param _start Start timestamp
+     * @param _duration Duration in seconds
+     * @param _amount Amount of tokens
      * @param _cliff Cliff duration in seconds
      */
-    function vest(
-        address _beneficiaryAddress,
-        uint256 _startTimestamp,
-        uint256 _durationSeconds,
+    function createVestingSchedule(
+        address _beneficiary,
+        uint256 _start,
+        uint256 _duration,
         uint256 _amount,
         uint256 _cliff
     ) external override {
+        if (_msgSender() != manager) revert OnlyManager();
+        if (_beneficiary == address(0)) revert ZeroAddress();
+        if (_duration == 0) revert InvalidDuration();
+        if (_cliff == 0) revert InvalidCliff();
+        if (_amount == 0) revert InvalidAmount(); // Amount must be > 0 for creation
+
+        if (beneficiary[_beneficiary].amount != 0)
+            revert BeneficiaryAlreadyExists();
+
         if (vestingAmount + _amount > token.balanceOf(address(this)))
             revert InsufficientTokens(
                 token.balanceOf(address(this)),
                 vestingAmount + _amount
             );
-        if (_msgSender() != saleContract) revert OnlySaleContract();
-        if (_beneficiaryAddress == address(0)) revert ZeroAddress();
-        if (_durationSeconds == 0) revert InvalidDuration();
-        if (_cliff == 0) revert InvalidCliff();
-
-        if (_amount > 0) {
-            if (beneficiary[_beneficiaryAddress].amount != 0)
-                revert BeneficiaryAlreadyExists();
-        } else {
-            if (beneficiary[_beneficiaryAddress].amount == 0)
-                revert UserIsNotBeneficiary();
-            if (
-                beneficiary[_beneficiaryAddress].start +
-                    beneficiary[_beneficiaryAddress].cliff <
-                _startTimestamp + _cliff
-            ) revert CliffCannotBeIncreased();
-        }
 
         vestingAmount += _amount;
 
-        beneficiary[_beneficiaryAddress].start = _startTimestamp;
-        beneficiary[_beneficiaryAddress].duration = _durationSeconds;
-        beneficiary[_beneficiaryAddress].cliff = _cliff;
-        beneficiary[_beneficiaryAddress].amount += _amount;
+        beneficiary[_beneficiary].start = _start;
+        beneficiary[_beneficiary].duration = _duration;
+        beneficiary[_beneficiary].cliff = _cliff;
+        beneficiary[_beneficiary].amount = _amount;
 
-        emit ScheduleCreated(_beneficiaryAddress, _amount);
+        emit ScheduleCreated(_beneficiary, _amount);
+    }
+
+    /**
+     * @notice Updates existing vesting schedule parameters
+     * @param _beneficiary Beneficiary address
+     * @param _newStart New start timestamp
+     * @param _newDuration New duration in seconds
+     * @param _newCliff New cliff duration in seconds
+     */
+    function updateVestingSchedule(
+        address _beneficiary,
+        uint256 _newStart,
+        uint256 _newDuration,
+        uint256 _newCliff
+    ) external override {
+        if (_msgSender() != manager) revert OnlyManager();
+        if (_newDuration == 0) revert InvalidDuration();
+        if (_newCliff == 0) revert InvalidCliff();
+
+        if (beneficiary[_beneficiary].amount == 0)
+            revert UserIsNotBeneficiary();
+
+        // Validating that we are not increasing the cliff period beyond the original schedule's cliff end time relative to new start
+        if (
+            beneficiary[_beneficiary].start + beneficiary[_beneficiary].cliff <
+            _newStart + _newCliff
+        ) revert CliffCannotBeIncreased();
+
+        beneficiary[_beneficiary].start = _newStart;
+        beneficiary[_beneficiary].duration = _newDuration;
+        beneficiary[_beneficiary].cliff = _newCliff;
+
+        emit ScheduleUpdated(_beneficiary, _newStart, _newDuration, _newCliff);
     }
 
     /**
@@ -194,13 +221,13 @@ contract MultiVesting is IVesting, OwnableUpgradeable {
     }
 
     /**
-     * @param _saleContract Address of the seller
+     * @param _manager Address of the seller
      */
-    function setSaleContract(address _saleContract) external onlyOwner {
-        if (_saleContract == address(0)) revert ZeroAddress();
-        saleContract = _saleContract;
+    function setManager(address _manager) external onlyOwner {
+        if (_manager == address(0)) revert ZeroAddress();
+        manager = _manager;
 
-        emit SaleContractUpdated(saleContract);
+        emit ManagerUpdated(manager);
     }
 
     /**
