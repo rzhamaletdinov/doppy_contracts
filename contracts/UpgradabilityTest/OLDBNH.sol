@@ -2,11 +2,11 @@
 pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
-contract OLDLEE is ERC20PermitUpgradeable, OwnableUpgradeable {
-    uint256 public constant MAX_AMOUNT = 7 * 10 ** 9 * 10 ** 18;
-    address public constant GNOSIS = 0xE6e74cA74e2209A5f2272f531627f44d34AFc299;
+contract OLDBNH is ERC20VotesUpgradeable, OwnableUpgradeable {
+    uint256 public constant MAX_AMOUNT = 10 ** 9 * 10 ** 18;
+    address public constant GNOSIS = 0x126481E4E79cBc8b4199911342861F7535e76EE7;
     uint256[50] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -15,8 +15,9 @@ contract OLDLEE is ERC20PermitUpgradeable, OwnableUpgradeable {
     }
 
     function initialize() external initializer {
-        __ERC20_init("CHEELEE Attention Token", "LEE");
-        __ERC20Permit_init("CHEELEE Attention Token");
+        __ERC20_init("Beyond Normal Horizons", "BNH");
+        __ERC20Permit_init("Beyond Normal Horizons");
+        __ERC20Votes_init();
 
         __Ownable_init();
 

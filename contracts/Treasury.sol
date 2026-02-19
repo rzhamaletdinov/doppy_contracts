@@ -25,27 +25,27 @@ contract Treasury is OwnableUpgradeable, ITreasury {
 
     /// @notice Contract initialization
     /// @param _recipient Address of the funds recipient
-    /// @param _lee Address of the LEE token
-    /// @param _cheel Address of the CHEEL token
+    /// @param _doppy Address of the DOPPY token
+    /// @param _bnh Address of the BNH token
     /// @param _usdt Address of the USDT token
     function initialize(
         address _recipient,
-        IERC20Upgradeable _lee,
-        IERC20Upgradeable _cheel,
+        IERC20Upgradeable _doppy,
+        IERC20Upgradeable _bnh,
         IERC20Upgradeable _usdt
     ) external initializer {
         __Ownable_init();
 
-        if (address(_lee) == address(0)) revert ZeroAddress();
-        if (address(_cheel) == address(0)) revert ZeroAddress();
+        if (address(_doppy) == address(0)) revert ZeroAddress();
+        if (address(_bnh) == address(0)) revert ZeroAddress();
         if (address(_usdt) == address(0)) revert ZeroAddress();
 
         if (_recipient == address(0)) revert ZeroAddress();
 
         recipient = _recipient;
 
-        allowedTokens.push(_lee);
-        allowedTokens.push(_cheel);
+        allowedTokens.push(_doppy);
+        allowedTokens.push(_bnh);
         allowedTokens.push(_usdt);
 
         transferOwnership(GNOSIS_WALLET);

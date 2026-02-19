@@ -1,6 +1,6 @@
 import {
-  CHEELConfigInterface,
-  BlockListConfigInterface, LEEConfigInterface, NFTConfigInterface, NFTSaleConfigInterface, TreasuryConfigInterface, MultiVestingConfigInterface
+  BNHConfigInterface,
+  BlockListConfigInterface, DOPPYConfigInterface, TreasuryConfigInterface, MultiVestingConfigInterface
 } from '../lib/ContractsConfigInterface';
 import * as Networks from '../lib/Networks';
 
@@ -14,12 +14,12 @@ export const BlockListConfig: BlockListConfigInterface = {
   adminContractAddress: '0xe9B36a6cacB369E7eee08d595720662425454bc2',
 };
 
-export const LEEConfig: LEEConfigInterface = {
+export const DOPPYConfig: DOPPYConfigInterface = {
   testnet: Networks.bscTestnet,
   mainnet: Networks.bscMainnet,
-  contractName: 'LEE',
-  tokenName: 'CHEELEE Attention Token',
-  tokenSymbol: 'LEE',
+  contractName: 'DOPPY',
+  tokenName: 'Dreams, Optimism, Playfulness & You',
+  tokenSymbol: 'DOPPY',
   maxAmount: 30000000000,
   blockList: '0xf7c0F7d756283349438ae2278DF389e5eC3bb2d2',
   multiSigAddress: '0xE6e74cA74e2209A5f2272f531627f44d34AFc299',
@@ -28,12 +28,12 @@ export const LEEConfig: LEEConfigInterface = {
   adminContractAddress: '0xe9B36a6cacB369E7eee08d595720662425454bc2',
 };
 
-export const CHEELConfig: CHEELConfigInterface = {
+export const BNHConfig: BNHConfigInterface = {
   testnet: Networks.bscTestnet,
   mainnet: Networks.bscMainnet,
-  contractName: 'CHEEL',
-  tokenName: 'CHEELEE',
-  tokenSymbol: 'CHEEL',
+  contractName: 'BNH',
+  tokenName: 'Beyond Normal Horizons',
+  tokenSymbol: 'BNH',
   maxAmount: 1000000000,
   blockList: '0xf7c0F7d756283349438ae2278DF389e5eC3bb2d2',
   multiSigAddress: '0x126481E4E79cBc8b4199911342861F7535e76EE7',
@@ -46,7 +46,7 @@ export const CHEELConfig: CHEELConfigInterface = {
 //   testnet: Networks.bscTestnet,
 //   mainnet: Networks.bscMainnet,
 //   contractName: 'NFT',
-//   nftName: 'CHEELEE NFT Glasses',
+//   nftName: 'NFT Glasses',
 //   nftSymbol: 'CNFTG',
 //   blockList: '0xf7c0F7d756283349438ae2278DF389e5eC3bb2d2',
 //   multiSigAddress: '0xC40b7fBb7160B98323159BA800e122C9DeD0668D',
@@ -59,7 +59,7 @@ export const CHEELConfig: CHEELConfigInterface = {
 //   testnet: Networks.bscTestnet,
 //   mainnet: Networks.bscMainnet,
 //   contractName: 'NFT',
-//   nftName: 'CHEELEE NFT Cases',
+//   nftName: 'NFT Cases',
 //   nftSymbol: 'CNFTC',
 //   blockList: '0xf7c0F7d756283349438ae2278DF389e5eC3bb2d2',
 //   multiSigAddress: '0xC40b7fBb7160B98323159BA800e122C9DeD0668D',
@@ -84,8 +84,8 @@ export const TreasuryConfig: TreasuryConfigInterface = {
   contractName: 'Treasury',
   multiSigAddress: '0x4c4B657574782E68ECEdabA8151e25dC2C9C1C70',
   contractAddress: '0x31b9F82C5C160297Bd56c7eFD0e8a0A62077062e',
-  proxyContractAddress: '0x54b2647c151990aC9E6bBe1cf39d5571D562c87c',
-  adminContractAddress: '0xe9B36a6cacB369E7eee08d595720662425454bc2',
+  proxyContractAddress: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788', // Local
+  adminContractAddress: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512', // Local
 };
 
 export const MultiVestingConfig: MultiVestingConfigInterface = {
@@ -93,11 +93,11 @@ export const MultiVestingConfig: MultiVestingConfigInterface = {
   mainnet: Networks.bscMainnet,
   contractName: 'MultiVesting',
   contractAddress: '', // TODO: Add contract address
-  proxyContractAddress: '', // TODO: Add proxy contract address
-  adminContractAddress: '', // TODO: Add admin contract address
+  proxyContractAddress: '0x0165878A594ca255338adfa4d48449f69242Eb8F', // Local
+  adminContractAddress: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512', // Local
   beneficiaryUpdateEnabled: true,
   emergencyWithdrawEnabled: true,
   beneficiaryUpdateDelaySeconds: 3600,
   beneficiaryUpdateValiditySeconds: 300,
-  cheelTokenAddress: '', // TODO: Add CHEEL token address
+  bnhTokenAddress: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9', // Local deployment
 };

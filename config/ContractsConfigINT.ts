@@ -1,6 +1,6 @@
 import {
-  CHEELConfigInterface,
-  BlockListConfigInterface, LEEConfigInterface, NFTConfigInterface, NFTSaleConfigInterface, TreasuryConfigInterface, MultiVestingConfigInterface
+  BNHConfigInterface,
+  BlockListConfigInterface, DOPPYConfigInterface, NFTConfigInterface, NFTSaleConfigInterface, TreasuryConfigInterface, MultiVestingConfigInterface
 } from '../lib/ContractsConfigInterface';
 import * as Networks from '../lib/Networks';
 
@@ -14,12 +14,12 @@ export const BlockListConfig: BlockListConfigInterface = {
   adminContractAddress: '',
 };
 
-export const LEEConfig: LEEConfigInterface = {
+export const DOPPYConfig: DOPPYConfigInterface = {
   testnet: Networks.bscTestnet,
   mainnet: Networks.bscMainnet,
-  contractName: 'LEE',
-  tokenName: 'CHEELEE Attention Token',
-  tokenSymbol: 'LEE',
+  contractName: 'DOPPY',
+  tokenName: 'Dreams, Optimism, Playfulness & You',
+  tokenSymbol: 'DOPPY',
   maxAmount: 30000000000,
   blockList: '',
   multiSigAddress: '',
@@ -28,12 +28,12 @@ export const LEEConfig: LEEConfigInterface = {
   adminContractAddress: '',
 };
 
-export const CHEELConfig: CHEELConfigInterface = {
+export const BNHConfig: BNHConfigInterface = {
   testnet: Networks.bscTestnet,
   mainnet: Networks.bscMainnet,
-  contractName: 'CHEEL',
-  tokenName: 'CHEELEE',
-  tokenSymbol: 'CHEEL',
+  contractName: 'BNH',
+  tokenName: 'Beyond Normal Horizons',
+  tokenSymbol: 'BNH',
   maxAmount: 1000000000,
   blockList: '',
   multiSigAddress: '',
@@ -46,7 +46,7 @@ export const CHEELConfig: CHEELConfigInterface = {
 //   testnet: Networks.bscTestnet,
 //   mainnet: Networks.bscMainnet,
 //   contractName: 'NFT',
-//   nftName: 'CHEELEE NFT Glasses',
+//   nftName: 'NFT Glasses',
 //   nftSymbol: 'CNFTG',
 //   blockList: '',
 //   multiSigAddress: '',
@@ -59,7 +59,7 @@ export const CHEELConfig: CHEELConfigInterface = {
 //   testnet: Networks.bscTestnet,
 //   mainnet: Networks.bscMainnet,
 //   contractName: 'NFT',
-//   nftName: 'CHEELEE NFT Cases',
+//   nftName: 'NFT Cases',
 //   nftSymbol: 'CNFTC',
 //   blockList: '',
 //   multiSigAddress: '',
@@ -99,6 +99,6 @@ export const MultiVestingConfig: MultiVestingConfigInterface = {
   emergencyWithdrawEnabled: true,
   beneficiaryUpdateDelaySeconds: 3600,
   beneficiaryUpdateValiditySeconds: 300,
-  cheelTokenAddress: '',
+  bnhTokenAddress: '',
 };
 

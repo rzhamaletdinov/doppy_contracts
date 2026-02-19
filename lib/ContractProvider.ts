@@ -1,7 +1,7 @@
 import {
   BlockList as BlockListType,
-  LEE as LEEType,
-  CHEEL as CHEELType,
+  DOPPY as DOPPYType,
+  BNH as BNHType,
   NFT as NFTType,
   Treasury as TreasuryType,
   MultiVesting as MultiVestingType,
@@ -25,8 +25,8 @@ export class BlockListContractProvider {
 };
 
 export type BlockListContractType = BlockListType;
-export type LEEContractType = LEEType;
-export type CHEELContractType = CHEELType;
+export type DOPPYContractType = DOPPYType;
+export type BNHContractType = BNHType;
 export type NFTContractType = NFTType;
 export type TreasuryContractType = TreasuryType;
 export type MultiVestingContractType = MultiVestingType;

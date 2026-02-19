@@ -7,9 +7,9 @@
 // import { parseEther } from "ethers/lib/utils";
 // import { ethers } from "hardhat";
 // import {
-//   CHEELConfig,
+//   BNHConfig,
 //   BlockListConfig,
-//   LEEConfig,
+//   DOPPYConfig,
 //   NFTCasesConfig,
 //   NFTGlassesConfig, NFTSaleConfig, TreasuryConfig
 // } from '../config/ContractsConfig';
@@ -19,9 +19,9 @@
 // import * as Redeem from "./RedeemEIP712";
 // import { Contract } from "ethers";
 // import {
-//   deployCHEEL,
+//   deployBNH,
 //   deployBlockList,
-//   deployLEE,
+//   deployDOPPY,
 //   deployNFT,
 //   deployNFTSale,
 //   deployTreasury
@@ -31,8 +31,8 @@
 
 // describe(NFTGlassesConfig.contractName, () => {
 //   let blockList: Contract;
-//   let cheel: Contract;
-//   let lee: Contract;
+//   let bnh: Contract;
+//   let doppy: Contract;
 //   let nftGlasses: Contract;
 //   let nftCases: Contract;
 //   let nftSaleGlasses: Contract;
@@ -41,8 +41,8 @@
 //   let usdt: Contract;
 //   let nftGlassesGnosis: SignerWithAddress;
 //   let nftCasesGnosis: SignerWithAddress;
-//   let cheelGnosis: SignerWithAddress;
-//   let leeGnosis: SignerWithAddress;
+//   let bnhGnosis: SignerWithAddress;
+//   let doppyGnosis: SignerWithAddress;
 //   let blockListGnosis: SignerWithAddress;
 //   let nftSaleGnosis: SignerWithAddress;
 //   let treasuryGnosis: SignerWithAddress;
@@ -66,11 +66,11 @@
 //     // Deploy Common BlockList
 //     blockList = await deployBlockList();
 
-//     // Deploy CHEEL
-//     cheel = await deployCHEEL();
+//     // Deploy BNH
+//     bnh = await deployBNH();
 
-//     // Deploy LEE
-//     lee = await deployLEE();
+//     // Deploy DOPPY
+//     doppy = await deployDOPPY();
 
 //     // Deploy NFT Glasses
 //     nftGlasses = await deployNFT(NFTGlassesConfig.nftName, NFTGlassesConfig.nftSymbol);
@@ -103,16 +103,16 @@
 //     // Deploy Treasury
 //     treasury = await deployTreasury(
 //       deployer.address,
-//       lee.address,
-//       cheel.address,
+//       doppy.address,
+//       bnh.address,
 //       usdt.address,
 //     );
 
 //     // Creating GNOSIS
 //     nftGlassesGnosis = await ethers.getImpersonatedSigner(NFTGlassesConfig.multiSigAddress)
 //     nftCasesGnosis = await ethers.getImpersonatedSigner(NFTGlassesConfig.multiSigAddress)
-//     cheelGnosis = await ethers.getImpersonatedSigner(CHEELConfig.multiSigAddress)
-//     leeGnosis = await ethers.getImpersonatedSigner(LEEConfig.multiSigAddress)
+//     bnhGnosis = await ethers.getImpersonatedSigner(BNHConfig.multiSigAddress)
+//     doppyGnosis = await ethers.getImpersonatedSigner(DOPPYConfig.multiSigAddress)
 //     blockListGnosis = await ethers.getImpersonatedSigner(BlockListConfig.multiSigAddress)
 //     nftSaleGnosis = await ethers.getImpersonatedSigner(NFTSaleConfig.multiSigAddress)
 //     treasuryGnosis = await ethers.getImpersonatedSigner(TreasuryConfig.multiSigAddress)
@@ -125,11 +125,11 @@
 //       value: ethers.utils.parseEther("1")
 //     })
 //     await etherHolder.sendTransaction({
-//       to: CHEELConfig.multiSigAddress,
+//       to: BNHConfig.multiSigAddress,
 //       value: ethers.utils.parseEther("1")
 //     })
 //     await etherHolder.sendTransaction({
-//       to: LEEConfig.multiSigAddress,
+//       to: DOPPYConfig.multiSigAddress,
 //       value: ethers.utils.parseEther("1")
 //     })
 //     await etherHolder.sendTransaction({
@@ -152,8 +152,8 @@
 //     it("Setting blocklist", async function () {
 //       await nftGlasses.connect(nftGlassesGnosis).setBlockList(blockList.address);
 //       await nftCases.connect(nftCasesGnosis).setBlockList(blockList.address);
-//       await cheel.connect(cheelGnosis).setBlockList(blockList.address);
-//       await lee.connect(leeGnosis).setBlockList(blockList.address);
+//       await bnh.connect(bnhGnosis).setBlockList(blockList.address);
+//       await doppy.connect(doppyGnosis).setBlockList(blockList.address);
 //     });
 
 //     it("Setting nft BASE URI", async function () {
@@ -675,8 +675,8 @@
 //   });
 
 //   describe("Tokens testing", async () => {
-//     it("mint and withdraw cheel tokens from treasury", async function () {
-//       await cheel.connect(cheelGnosis).mint(
+//     it("mint and withdraw bnh tokens from treasury", async function () {
+//       await bnh.connect(bnhGnosis).mint(
 //         treasury.address,
 //         parseEther("100000")
 //       );
@@ -693,7 +693,7 @@
 //     });
 
 //     it("adding new token", async function () {
-//       const newTokenTest = await deployCHEEL();
+//       const newTokenTest = await deployBNH();
 
 //       result = await treasury.connect(treasuryGnosis).addToken(
 //         newTokenTest.address
@@ -702,7 +702,7 @@
 
 //       expect(resultWaited.events[0].args.addr).to.equal(newTokenTest.address);
 
-//       await newTokenTest.connect(cheelGnosis).mint(
+//       await newTokenTest.connect(bnhGnosis).mint(
 //         treasury.address,
 //         parseEther("100000")
 //       );

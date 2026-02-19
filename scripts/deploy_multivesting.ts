@@ -1,6 +1,6 @@
 import { ethers, upgrades } from "hardhat";
 import { verify } from "./19_verify";
-import { MultiVestingConfig, CHEELConfig } from "../config/ContractsConfig";
+import { MultiVestingConfig, BNHConfig } from "../config/ContractsConfig";
 import { MultiVestingContractType } from "../lib/ContractProvider";
 
 async function main() {
@@ -8,11 +8,11 @@ async function main() {
 
     const MV = await ethers.getContractFactory(MultiVestingConfig.contractName);
 
-    // Use configured CHEEL address if available, otherwise fallback to CHEELConfig proxy address
-    const cheelAddress = MultiVestingConfig.cheelTokenAddress || CHEELConfig.proxyContractAddress;
+    // Use configured BNH address if available, otherwise fallback to BNHConfig proxy address
+    const bnhAddress = MultiVestingConfig.bnhTokenAddress || BNHConfig.proxyContractAddress;
 
     const multiVesting = await upgrades.deployProxy(MV, [
-        cheelAddress,
+        bnhAddress,
         MultiVestingConfig.beneficiaryUpdateEnabled,
         MultiVestingConfig.emergencyWithdrawEnabled,
         MultiVestingConfig.beneficiaryUpdateDelaySeconds,

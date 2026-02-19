@@ -1,14 +1,14 @@
 import { ethers, upgrades } from "hardhat";
 import {
-  CHEELContractType,
-  LEEContractType,
+  BNHContractType,
+  DOPPYContractType,
   NFTContractType,
   BlockListContractType
 } from "../lib/ContractProvider";
 import {
   BlockListConfig,
-  LEEConfig,
-  CHEELConfig,
+  DOPPYConfig,
+  BNHConfig,
   NFTCasesConfig,
   NFTGlassesConfig
 } from "../config/ContractsConfig";
@@ -36,35 +36,35 @@ async function main() {
   // console.log('Proxy blacklist contract deployed to:', commonBlacklistProxy.address);
   // console.log('Admin blacklist contract deployed to:', commonBlacklistAdmin);
 
-  console.log('Deploying LEE contract...');
+  console.log('Deploying DOPPY contract...');
 
   // We get the contract to deploy
-  const LEEContract = await ethers.getContractFactory(LEEConfig.contractName);
-  const leeProxy = await upgrades.deployProxy(LEEContract, [], { initializer: 'initialize' }) as LEEContractType;
+  const DOPPYContract = await ethers.getContractFactory(DOPPYConfig.contractName);
+  const doppyProxy = await upgrades.deployProxy(DOPPYContract, [], { initializer: 'initialize' }) as DOPPYContractType;
 
-  await leeProxy.deployed();
+  await doppyProxy.deployed();
 
-  const leeContract = await upgrades.erc1967.getImplementationAddress(leeProxy.address);
-  const leeAdmin = await upgrades.erc1967.getAdminAddress(leeProxy.address);
+  const doppyContract = await upgrades.erc1967.getImplementationAddress(doppyProxy.address);
+  const doppyAdmin = await upgrades.erc1967.getAdminAddress(doppyProxy.address);
 
-  console.log('Contract LEE deployed to:', leeContract);
-  console.log('Proxy LEE contract deployed to:', leeProxy.address);
-  console.log('Admin LEE contract deployed to:', leeAdmin);
+  console.log('Contract DOPPY deployed to:', doppyContract);
+  console.log('Proxy DOPPY contract deployed to:', doppyProxy.address);
+  console.log('Admin DOPPY contract deployed to:', doppyAdmin);
 
-  console.log('Deploying CHEEL contract...');
+  console.log('Deploying BNH contract...');
 
   // We get the contract to deploy
-  const CHEELContract = await ethers.getContractFactory(CHEELConfig.contractName);
-  const cheelProxy = await upgrades.deployProxy(CHEELContract, [], { initializer: 'initialize' }) as CHEELContractType;
+  const BNHContract = await ethers.getContractFactory(BNHConfig.contractName);
+  const bnhProxy = await upgrades.deployProxy(BNHContract, [], { initializer: 'initialize' }) as BNHContractType;
 
-  await cheelProxy.deployed();
+  await bnhProxy.deployed();
 
-  const cheelContract = await upgrades.erc1967.getImplementationAddress(cheelProxy.address);
-  const cheelAdmin = await upgrades.erc1967.getAdminAddress(cheelProxy.address);
+  const bnhContract = await upgrades.erc1967.getImplementationAddress(bnhProxy.address);
+  const bnhAdmin = await upgrades.erc1967.getAdminAddress(bnhProxy.address);
 
-  console.log('Contract CHEEL deployed to:', cheelContract);
-  console.log('Proxy CHEEL contract deployed to:', cheelProxy.address);
-  console.log('Admin CHEEL contract deployed to:', cheelAdmin);
+  console.log('Contract BNH deployed to:', bnhContract);
+  console.log('Proxy BNH contract deployed to:', bnhProxy.address);
+  console.log('Admin BNH contract deployed to:', bnhAdmin);
 
   console.log('Deploying NFT Glasses contract...');
 

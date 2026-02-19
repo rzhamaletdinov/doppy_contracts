@@ -1,5 +1,5 @@
 import { ethers, upgrades } from "hardhat";
-import { CHEELConfig, BlockListConfig } from "../config/ContractsConfig";
+import { BNHConfig, BlockListConfig } from "../config/ContractsConfig";
 
 export async function deployBlockList() {
     const Contract = await ethers.getContractFactory(BlockListConfig.contractName);
@@ -8,23 +8,23 @@ export async function deployBlockList() {
     return contract
 }
 
-export async function deployLEE() {
-    const Contract = await ethers.getContractFactory("LEE");
+export async function deployDOPPY() {
+    const Contract = await ethers.getContractFactory("DOPPY");
     const contract = await upgrades.deployProxy(Contract, [], { initializer: "initialize" })
     await contract.deployed()
     return contract
 }
 
-export async function deployCHEEL() {
-    const Contract = await ethers.getContractFactory(CHEELConfig.contractName);
+export async function deployBNH() {
+    const Contract = await ethers.getContractFactory(BNHConfig.contractName);
     const contract = await upgrades.deployProxy(Contract, [], { initializer: "initialize" })
     await contract.deployed()
     return contract
 }
 
-export async function deployTreasury(recipient: any, lee: any, cheel: any, usdt: any) {
+export async function deployTreasury(recipient: any, doppy: any, bnh: any, usdt: any) {
     const Contract = await ethers.getContractFactory("Treasury");
-    const contract = await upgrades.deployProxy(Contract, [recipient, lee, cheel, usdt], { initializer: "initialize" })
+    const contract = await upgrades.deployProxy(Contract, [recipient, doppy, bnh, usdt], { initializer: "initialize" })
     await contract.deployed()
     return contract
 }
@@ -74,13 +74,13 @@ export async function deployTest(token: any) {
 
 // export async function deployTokenSale(
 //     vesting: any,
-//     cheel: any,
+//     bnh: any,
 //     usdt: any,
 //     signer: any,
 //     finishTimestamp: number,
 // ) {
 //     const Contract = await ethers.getContractFactory("TokenSale");
-//     const contract = await Contract.deploy(vesting, cheel, usdt, signer, finishTimestamp);
+//     const contract = await Contract.deploy(vesting, bnh, usdt, signer, finishTimestamp);
 //     await contract.deployed();
 //     return contract
 // }

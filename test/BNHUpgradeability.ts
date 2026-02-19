@@ -5,16 +5,16 @@ import {
   // @ts-ignore
 } from "@openzeppelin/test-helpers";
 import { ethers, upgrades } from "hardhat";
-import { CHEELConfig, BlockListConfig } from "../config/ContractsConfig";
+import { BNHConfig, BlockListConfig } from "../config/ContractsConfig";
 import { parseEther } from "ethers/lib/utils";
 import { Contract } from "ethers";
-import { deployBlockList, deployCHEEL } from "../utils/deployContracts";
+import { deployBlockList, deployBNH } from "../utils/deployContracts";
 import { expectCustomError } from "../utils/helpers";
 import { expect } from "chai";
 
-describe(`OLD${CHEELConfig.contractName} Upgrade`, () => {
-  let oldCheel: Contract;
-  let cheel: Contract;
+describe(`OLD${BNHConfig.contractName} Upgrade`, () => {
+  let oldBnh: Contract;
+  let bnh: Contract;
   let blockList: Contract;
   let gnosis: SignerWithAddress;
   let blockListGnosis: SignerWithAddress;
@@ -26,20 +26,20 @@ describe(`OLD${CHEELConfig.contractName} Upgrade`, () => {
   let BLOCKLIST_ADMIN_ROLE: string;
 
   before(async () => {
-    // Deploy OLDCHEEL
-    const OLDCHEEL = await ethers.getContractFactory("OLDCHEEL");
-    oldCheel = await upgrades.deployProxy(OLDCHEEL, [], { initializer: "initialize" });
-    await oldCheel.deployed();
+    // Deploy OLDBNH
+    const OLDBNH = await ethers.getContractFactory("OLDBNH");
+    oldBnh = await upgrades.deployProxy(OLDBNH, [], { initializer: "initialize" });
+    await oldBnh.deployed();
 
     // Deploy BlockList
     blockList = await deployBlockList();
 
     // Creating GNOSIS
     [etherHolder, deployer, receiver, badguy, moderator] = await ethers.getSigners();
-    gnosis = await ethers.getImpersonatedSigner(CHEELConfig.multiSigAddress)
+    gnosis = await ethers.getImpersonatedSigner(BNHConfig.multiSigAddress)
     blockListGnosis = await ethers.getImpersonatedSigner(BlockListConfig.multiSigAddress)
     await etherHolder.sendTransaction({
-      to: CHEELConfig.multiSigAddress,
+      to: BNHConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
     })
     await etherHolder.sendTransaction({
@@ -52,29 +52,29 @@ describe(`OLD${CHEELConfig.contractName} Upgrade`, () => {
 
   it("Mint tokens", async function () {
 
-    await oldCheel.connect(gnosis).mint(
+    await oldBnh.connect(gnosis).mint(
       deployer.address,
       parseEther("1000000")
     );
 
-    await oldCheel.connect(gnosis).mint(
+    await oldBnh.connect(gnosis).mint(
       badguy.address,
       parseEther("1000000")
     );
   });
 
-  it('Upgrade to new CHEEL version', async function () {
-    const CHEEL = await ethers.getContractFactory(CHEELConfig.contractName);
+  it('Upgrade to new BNH version', async function () {
+    const BNH = await ethers.getContractFactory(BNHConfig.contractName);
 
-    cheel = await upgrades.upgradeProxy(oldCheel.address, CHEEL)
+    bnh = await upgrades.upgradeProxy(oldBnh.address, BNH)
   });
 
   it("Setting blockList", async function () {
-    await cheel.connect(gnosis).setBlockList(blockList.address);
+    await bnh.connect(gnosis).setBlockList(blockList.address);
   });
 
   it("Grant BLOCKLIST_ADMIN_ROLE for moderator", async function () {
-    expect((await cheel.blockList()).toUpperCase()).to.equal(blockList.address.toUpperCase());
+    expect((await bnh.blockList()).toUpperCase()).to.equal(blockList.address.toUpperCase());
 
     await blockList.connect(blockListGnosis).grantRole(
       BLOCKLIST_ADMIN_ROLE,
@@ -92,7 +92,7 @@ describe(`OLD${CHEELConfig.contractName} Upgrade`, () => {
 
   it("New function added works", async function () {
     await expectCustomError(
-      cheel.connect(badguy).transfer(
+      bnh.connect(badguy).transfer(
         deployer.address,
         parseEther("1000000")
       ),
@@ -100,7 +100,7 @@ describe(`OLD${CHEELConfig.contractName} Upgrade`, () => {
     );
 
     await expectRevert(
-      cheel.connect(gnosis).transferFrom(
+      bnh.connect(gnosis).transferFrom(
         badguy.address,
         deployer.address,
         parseEther("1000000")
@@ -110,8 +110,8 @@ describe(`OLD${CHEELConfig.contractName} Upgrade`, () => {
   });
 
   it("Balancies is correct", async function () {
-    expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
+    expect(await bnh.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-    expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
+    expect(await bnh.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
   });
 });

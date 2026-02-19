@@ -2,13 +2,13 @@
 // import { expect } from "chai";
 // import { BigNumber, Signer, Contract } from "ethers";
 // import { ethers } from "hardhat";
-// import { deployCHEEL, deployBlockList, deployStaking } from "../utils/deployContracts"
+// import { deployBNH, deployBlockList, deployStaking } from "../utils/deployContracts"
 // import { increaseTime, increaseTimeDays, currentTimestamp } from "../utils/helpers"
 
 
 // describe("Staking", function () {
 //   let blockList: Contract;
-//   let cheel: Contract
+//   let bnh: Contract
 //   let staking: Contract
 //   let owner: Signer
 //   let user: Signer
@@ -17,20 +17,20 @@
 //     [owner, user] = await ethers.getSigners()
 
 //     blockList = await deployBlockList();
-//     cheel = await deployCHEEL();
-//     const gnosisWallet = await cheel.GNOSIS_WALLET();
+//     bnh = await deployBNH();
+//     const gnosisWallet = await bnh.GNOSIS_WALLET();
 //     const gnosisSigner = await ethers.getImpersonatedSigner(gnosisWallet);
 //     await owner.sendTransaction({ to: gnosisWallet, value: ethers.utils.parseEther("1.0") });
-//     await cheel.connect(gnosisSigner).setBlockList(blockList.address);
-//     staking = await deployStaking(cheel.address);
+//     await bnh.connect(gnosisSigner).setBlockList(blockList.address);
+//     staking = await deployStaking(bnh.address);
 //   })
 
 //   it("Deposit works", async () => {
 //     let amount = "150000000000000000000"
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(await user.getAddress(), amount)
-//     await cheel.connect(user).approve(staking.address, amount);
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(await user.getAddress(), amount)
+//     await bnh.connect(user).approve(staking.address, amount);
 
-//     expect(await cheel.balanceOf(await user.getAddress())).to.be.equal(amount)
+//     expect(await bnh.balanceOf(await user.getAddress())).to.be.equal(amount)
 
 //     await expect(staking.connect(user).deposit(1000, 0)).to.be.revertedWith("Not enough tokens")
 //     await staking.connect(user).deposit(amount, 0)
@@ -44,8 +44,8 @@
 
 //   it("Earned works", async () => {
 //     let amount = "150000000000000000000"
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(await user.getAddress(), amount)
-//     await cheel.connect(user).approve(staking.address, amount);
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(await user.getAddress(), amount)
+//     await bnh.connect(user).approve(staking.address, amount);
 //     await staking.connect(user).deposit(amount, 0)
 //     await increaseTime(5 * 60 * 60 / 2)
 //     expect((await staking.earned(await user.getAddress(), 0))._canCollect).to.be.equal(0);
@@ -63,8 +63,8 @@
 //     let amount2Incorrect = "100000000000000000000"
 //     let amount3Incorrect = "450000000000000000000"
 //     let amountSum = "5650000000000000000000"
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(await user.getAddress(), amountSum)
-//     await cheel.connect(user).approve(staking.address, amountSum);
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(await user.getAddress(), amountSum)
+//     await bnh.connect(user).approve(staking.address, amountSum);
 
 //     await expect(staking.connect(user).deposit(amountIncorrect, 0)).to.be.reverted
 //     await expect(staking.connect(user).deposit(amount2Incorrect, 1)).to.be.reverted
@@ -85,10 +85,10 @@
 //   })
 
 //   it("Earning works correctly after 1 year", async () => {
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(staking.address, "1000000000000000000000000")
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(staking.address, "1000000000000000000000000")
 //     let amount = "200000000000000000000"
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(await user.getAddress(), amount)
-//     await cheel.connect(user).approve(staking.address, amount);
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(await user.getAddress(), amount)
+//     await bnh.connect(user).approve(staking.address, amount);
 
 //     await staking.connect(user).deposit(amount, 0)
 
@@ -100,10 +100,10 @@
 //   })
 
 //   it("Claim and Withdraw works", async () => {
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(staking.address, "1000000000000000000000000")
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(staking.address, "1000000000000000000000000")
 //     let amount = "150000000000000000000"
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(await user.getAddress(), amount)
-//     await cheel.connect(user).approve(staking.address, amount);
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(await user.getAddress(), amount)
+//     await bnh.connect(user).approve(staking.address, amount);
 //     await staking.connect(user).deposit(amount, 0)
 
 //     await increaseTimeDays(44) //friday
@@ -126,18 +126,18 @@
 //     expect((await staking.earned(await user.getAddress(), 0))[0]).to.be.equal("0");
 //     expect((await staking.earned(await user.getAddress(), 0))[1]).to.be.equal("0");
 
-//     expect(await cheel.balanceOf(await user.getAddress())).not.to.be.equal("0")
+//     expect(await bnh.balanceOf(await user.getAddress())).not.to.be.equal("0")
 //   })
 
 //   it("add works", async () => {
 //     let secondsPerYear = 8766 * 60 * 60
 //     let maxValue = "1000000000000000000000000"
 
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(staking.address, maxValue)
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(staking.address, maxValue)
 //     let amount = "100000000000000000000"
 //     let amount10Percentage_half = "5000000000000000000"
-//     await cheel.connect(await getGnosisWithEther(cheel)).mint(await user.getAddress(), amount + "0")
-//     await cheel.connect(user).approve(staking.address, amount + "0");
+//     await bnh.connect(await getGnosisWithEther(bnh)).mint(await user.getAddress(), amount + "0")
+//     await bnh.connect(user).approve(staking.address, amount + "0");
 
 //     await expect(staking.connect(user).deposit(amount, 3)).to.be.reverted
 
