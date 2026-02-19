@@ -1,21 +1,20 @@
 import { expect } from "chai";
 import {
   expectRevert,
-  constants,
+  constants
   // @ts-ignore
 } from "@openzeppelin/test-helpers";
 import { parseEther } from "ethers/lib/utils";
 import { ethers } from "hardhat";
-import { CHEELConfig, BlockListConfig } from '../config/ContractsConfig';
+import { DOPPYConfig, BlockListConfig } from '../config/ContractsConfig';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { deployCHEEL, deployBlockList } from "../utils/deployContracts";
 import { Contract } from "ethers";
+import { deployBlockList, deployDOPPY } from "../utils/deployContracts";
 import { expectCustomError } from "../utils/helpers";
 
-
-describe(CHEELConfig.contractName, () => {
+describe(DOPPYConfig.contractName, () => {
   let blockList: Contract;
-  let cheel: Contract;
+  let doppy: Contract;
   let gnosis: SignerWithAddress;
   let blockListGnosis: SignerWithAddress;
   let etherHolder: SignerWithAddress;
@@ -24,8 +23,6 @@ describe(CHEELConfig.contractName, () => {
   let badguy: SignerWithAddress;
   let moderator: SignerWithAddress;
   let verybadguy: SignerWithAddress;
-  let clearLimitsUser: SignerWithAddress;
-  let exclusionContract: SignerWithAddress;
   let BLOCKLIST_ADMIN_ROLE: string;
   let result: any;
   let resultWaited: any;
@@ -34,141 +31,104 @@ describe(CHEELConfig.contractName, () => {
     // Deploy BlockList
     blockList = await deployBlockList();
 
-    // Deploy CHEEL
-    cheel = await deployCHEEL();
+    // Deploy DOPPY
+    doppy = await deployDOPPY();
 
-    // Create GENOSIS
-    [etherHolder, deployer, receiver, badguy, moderator, verybadguy, clearLimitsUser, exclusionContract] = await ethers.getSigners();
-    gnosis = await ethers.getImpersonatedSigner(CHEELConfig.multiSigAddress)
-    blockListGnosis = await ethers.getImpersonatedSigner(BlockListConfig.multiSigAddress)
-
+    // Creating GNOSIS
+    [etherHolder, deployer, receiver, badguy, moderator, verybadguy] = await ethers.getSigners();
+    gnosis = await ethers.getImpersonatedSigner(DOPPYConfig.multiSigAddress);
+    blockListGnosis = await ethers.getImpersonatedSigner(BlockListConfig.multiSigAddress);
     await etherHolder.sendTransaction({
-      to: CHEELConfig.multiSigAddress,
+      to: DOPPYConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
-    })
+    });
     await etherHolder.sendTransaction({
       to: BlockListConfig.multiSigAddress,
       value: ethers.utils.parseEther("1")
-    })
+    });
 
     BLOCKLIST_ADMIN_ROLE = await blockList.BLOCKLIST_ADMIN_ROLE();
   });
 
   describe("Normal cases:", async () => {
     it("Setting blockList", async function () {
-      await cheel.connect(gnosis).setBlockList(blockList.address);
+      await doppy.connect(gnosis).setBlockList(blockList.address);
     });
 
     it("Check initial data", async function () {
-      expect(await cheel.name()).to.equal(CHEELConfig.tokenName);
-      expect(await cheel.symbol()).to.equal(CHEELConfig.tokenSymbol);
-      const maxAmount = parseEther(`${CHEELConfig.maxAmount}`).toString();
-      expect((await cheel.MAX_SUPPLY()).toString()).to.equal(maxAmount);
-      expect((await cheel.totalSupply()).toString()).to.equal('0');
-      expect((await cheel.blockList()).toUpperCase()).to.equal(blockList.address.toUpperCase());
-      expect((await cheel.GNOSIS_WALLET()).toUpperCase()).to.equal(CHEELConfig.multiSigAddress.toUpperCase());
-      expect((await cheel.owner()).toUpperCase()).to.equal(CHEELConfig.multiSigAddress.toUpperCase());
+      expect(await doppy.name()).to.equal(DOPPYConfig.tokenName);
+      expect(await doppy.symbol()).to.equal(DOPPYConfig.tokenSymbol);
+      const maxAmount = parseEther(`${DOPPYConfig.maxAmount}`).toString();
+      expect((await doppy.MAX_SUPPLY()).toString()).to.equal(maxAmount);
+      expect((await doppy.totalSupply()).toString()).to.equal('0');
+      expect((await doppy.blockList()).toUpperCase()).to.equal(blockList.address.toUpperCase());
+      expect((await doppy.GNOSIS_WALLET()).toUpperCase()).to.equal(DOPPYConfig.multiSigAddress.toUpperCase());
+      expect((await doppy.owner()).toUpperCase()).to.equal(DOPPYConfig.multiSigAddress.toUpperCase());
     });
 
     it("Mint and approve all contracts", async function () {
 
-      await cheel.connect(gnosis).mint(
+      await doppy.connect(gnosis).mint(
         gnosis.address,
         parseEther("1000000")
       );
 
-      await cheel.connect(gnosis).mint(
+      await doppy.connect(gnosis).mint(
         deployer.address,
         parseEther("1000000")
       );
 
-      await cheel.connect(gnosis).mint(
+      await doppy.connect(gnosis).mint(
         receiver.address,
         parseEther("2000000")
       );
 
-      await cheel.connect(gnosis).mint(
+      await doppy.connect(gnosis).mint(
         badguy.address,
         parseEther("3000000")
       );
 
-      await cheel.connect(gnosis).mint(
+      await doppy.connect(gnosis).mint(
         verybadguy.address,
         parseEther("3000000")
       );
 
-      await cheel.connect(gnosis).mint(
-        exclusionContract.address,
-        parseEther("3000000")
-      );
+      expect(await doppy.totalSupply()).to.equal(parseEther("10000000"));
 
-      await cheel.connect(gnosis).mint(
-        clearLimitsUser.address,
-        parseEther("3000000")
-      );
+      expect(await doppy.balanceOf(gnosis.address)).to.equal(parseEther("1000000"));
 
-      expect(await cheel.totalSupply()).to.equal(parseEther("16000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      expect(await cheel.balanceOf(gnosis.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(receiver.address)).to.equal(parseEther("2000000"));
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("3000000"));
 
-      expect(await cheel.balanceOf(receiver.address)).to.equal(parseEther("2000000"));
-
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("3000000"));
-
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("3000000"));
-
-      expect(await cheel.balanceOf(exclusionContract.address)).to.equal(parseEther("3000000"));
-
-      expect(await cheel.balanceOf(clearLimitsUser.address)).to.equal(parseEther("3000000"));
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("3000000"));
     });
 
     it("Burn tokens", async function () {
-      await cheel.connect(gnosis).burn(
+      await doppy.connect(gnosis).burn(
         parseEther("1000000")
       );
 
-      expect(await cheel.balanceOf(gnosis.address)).to.equal(parseEther("0"));
+      expect(await doppy.balanceOf(gnosis.address)).to.equal(parseEther("0"));
 
-      expect(await cheel.totalSupply()).to.equal(parseEther("15000000"));
+      expect(await doppy.totalSupply()).to.equal(parseEther("9000000"));
     });
 
     it("Transactions", async function () {
-      await cheel.connect(badguy).transfer(
+      await doppy.connect(badguy).transfer(
         deployer.address,
         parseEther("1000000")
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
 
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
-    });
-
-    it("Delegate", async function () {
-      await cheel.connect(badguy).delegate(
-        deployer.address
-      );
-
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
-
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
     });
   });
 
-  describe("Global blocklist", async () => {
-
-
-    it("Adding verybadguy for global blocklist", async function () {
-      await blockList.connect(blockListGnosis).addUsersToBlockList(
-        [verybadguy.address]
-      );
-
-      expect(await blockList.userIsBlocked(badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
-      expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
-      expect(await blockList.userIsBlocked(deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
-    });
-
+  describe("Global Blocklist", async () => {
     it("Grant BLOCKLIST_ADMIN_ROLE for moderator", async function () {
       result = await blockList.connect(blockListGnosis).grantRole(
         BLOCKLIST_ADMIN_ROLE,
@@ -181,9 +141,19 @@ describe(CHEELConfig.contractName, () => {
       expect(await blockList.hasRole(BLOCKLIST_ADMIN_ROLE, moderator.address)).to.be.true;
     });
 
-    it("Blocking transactions for users in global blocklist", async function () {
+    it("Adding verybadguy for common blocklist", async function () {
+      await blockList.connect(moderator).addUsersToBlockList(
+        [verybadguy.address]
+      );
+
+      expect(await blockList.userIsBlocked(badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
+      expect(await blockList.userIsBlocked(deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+    });
+
+    it("Blocking transactions for users in common blocklist", async function () {
       await expectCustomError(
-        cheel.connect(verybadguy).transfer(
+        doppy.connect(verybadguy).transfer(
           deployer.address,
           parseEther("1000000")
         ),
@@ -191,7 +161,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectRevert(
-        cheel.connect(gnosis).transferFrom(
+        doppy.connect(gnosis).transferFrom(
           verybadguy.address,
           deployer.address,
           parseEther("1000000")
@@ -199,12 +169,12 @@ describe(CHEELConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
 
-      expect(await cheel.balanceOf(verybadguy.address)).to.equal(parseEther("3000000"));
+      expect(await doppy.balanceOf(verybadguy.address)).to.equal(parseEther("3000000"));
     });
 
-    it("Removing verybadguy from global blocklist", async function () {
+    it("Removing verybadguy from common blocklist", async function () {
       await blockList.connect(moderator).removeUsersFromBlockList(
         [verybadguy.address]
       );
@@ -212,8 +182,8 @@ describe(CHEELConfig.contractName, () => {
       expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
     });
 
-    it("UnBlocking transactions for users in global blocklist and blocking again", async function () {
-      result = await cheel.connect(verybadguy).transfer(
+    it("UnBlocking transactions for users in common blocklist and blocking again", async function () {
+      result = await doppy.connect(verybadguy).transfer(
         deployer.address,
         parseEther("1000000")
       );
@@ -224,7 +194,7 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("1000000").toString());
 
       await expectRevert(
-        cheel.connect(gnosis).transferFrom(
+        doppy.connect(gnosis).transferFrom(
           verybadguy.address,
           deployer.address,
           parseEther("1000000")
@@ -232,9 +202,9 @@ describe(CHEELConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("3000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("3000000"));
 
-      expect(await cheel.balanceOf(verybadguy.address)).to.equal(parseEther("2000000"));
+      expect(await doppy.balanceOf(verybadguy.address)).to.equal(parseEther("2000000"));
 
       await blockList.connect(moderator).addUsersToBlockList(
         [verybadguy.address]
@@ -245,19 +215,20 @@ describe(CHEELConfig.contractName, () => {
   describe("Internal Blocklist", async () => {
     it("Adding badguy for internal blocklist", async function () {
       await blockList.connect(moderator).addUsersToInternalBlockList(
-        cheel.address,
+        doppy.address,
         [badguy.address]
       );
 
-      expect(await blockList.userIsInternalBlocked(cheel.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
-      expect(await blockList.userIsInternalBlocked(cheel.address, deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
-      expect(await blockList.userIsInternalBlocked(cheel.address, verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsInternalBlocked(doppy.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
+      expect(await blockList.userIsInternalBlocked(doppy.address, deployer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsInternalBlocked(doppy.address, verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
       expect(await blockList.userIsBlocked(verybadguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.true;
     });
 
     it("Blocking transactions for users in internal blocklist", async function () {
+
       await expectCustomError(
-        cheel.connect(badguy).transfer(
+        doppy.connect(badguy).transfer(
           deployer.address,
           parseEther("1000000")
         ),
@@ -265,7 +236,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           badguy.address,
           parseEther("1000000")
         ),
@@ -273,7 +244,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectRevert(
-        cheel.connect(badguy).transferFrom(
+        doppy.connect(badguy).transferFrom(
           badguy.address,
           deployer.address,
           parseEther("1000000")
@@ -282,7 +253,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectRevert(
-        cheel.connect(gnosis).transferFrom(
+        doppy.connect(gnosis).transferFrom(
           badguy.address,
           deployer.address,
           parseEther("1000000")
@@ -290,22 +261,22 @@ describe(CHEELConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("3000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("3000000"));
 
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
     });
 
     it("Removing badguy from internal blocklist", async function () {
       await blockList.connect(moderator).removeUsersFromInternalBlockList(
-        cheel.address,
+        doppy.address,
         [badguy.address]
       );
 
-      expect(await blockList.userIsInternalBlocked(cheel.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
+      expect(await blockList.userIsInternalBlocked(doppy.address, badguy.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)).to.be.false;
     });
 
     it("UnBlocking transactions for users in internal blocklist and blocking again", async function () {
-      result = await cheel.connect(badguy).transfer(
+      result = await doppy.connect(badguy).transfer(
         deployer.address,
         parseEther("1000000")
       );
@@ -317,7 +288,7 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("1000000").toString());
 
       await expectRevert(
-        cheel.connect(gnosis).transferFrom(
+        doppy.connect(gnosis).transferFrom(
           badguy.address,
           deployer.address,
           parseEther("1000000")
@@ -325,12 +296,12 @@ describe(CHEELConfig.contractName, () => {
         "ERC20: insufficient allowance"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("4000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("4000000"));
 
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
 
       await blockList.connect(moderator).addUsersToInternalBlockList(
-        cheel.address,
+        doppy.address,
         [badguy.address]
       );
     });
@@ -339,7 +310,7 @@ describe(CHEELConfig.contractName, () => {
   describe("Getting information about the presence of users from the list in the blocklist", async () => {
     it("Only internal blocklisted user", async function () {
       result = await blockList.connect(moderator).usersFromListIsBlocked(
-        cheel.address,
+        doppy.address,
         [deployer.address, receiver.address, badguy.address]
       );
 
@@ -350,7 +321,7 @@ describe(CHEELConfig.contractName, () => {
 
     it("Internal and global blocklisted user", async function () {
       result = await blockList.connect(moderator).usersFromListIsBlocked(
-        cheel.address,
+        doppy.address,
         [deployer.address, receiver.address, badguy.address, verybadguy.address]
       );
 
@@ -374,7 +345,7 @@ describe(CHEELConfig.contractName, () => {
   describe("Token Rate Limit", async () => {
     it("Adding Token limit", async function () {
       result = await blockList.connect(moderator).setTokenLimits(
-        cheel.address,
+        doppy.address,
         parseEther("1000000"),
         parseEther("1500000"),
         parseEther("1000000"),
@@ -383,14 +354,14 @@ describe(CHEELConfig.contractName, () => {
 
       resultWaited = await result.wait();
 
-      expect(resultWaited.events[0].args.token).to.equal(cheel.address);
+      expect(resultWaited.events[0].args.token).to.equal(doppy.address);
       expect(resultWaited.events[0].args.dailyIncomeLimit).to.equal(parseEther("1000000").toString());
       expect(resultWaited.events[0].args.monthlyIncomeLimit).to.equal(parseEther("1500000").toString());
       expect(resultWaited.events[0].args.dailyOutcomeLimit).to.equal(parseEther("1000000").toString());
       expect(resultWaited.events[0].args.monthlyOutcomeLimit).to.equal(parseEther("1500000").toString());
 
       result = await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
+        doppy.address,
         true,
         true,
         true,
@@ -399,14 +370,14 @@ describe(CHEELConfig.contractName, () => {
 
       resultWaited = await result.wait();
 
-      expect(resultWaited.events[0].args.token).to.equal(cheel.address);
+      expect(resultWaited.events[0].args.token).to.equal(doppy.address);
       expect(resultWaited.events[0].args.hasDailyIncomeLimit).to.equal(true);
       expect(resultWaited.events[0].args.hasMonthlyIncomeLimit).to.equal(true);
       expect(resultWaited.events[0].args.hasDailyOutcomeLimit).to.equal(true);
       expect(resultWaited.events[0].args.hasMonthlyOutcomeLimit).to.equal(true);
 
       {
-        const _r = await blockList.getTokenLimits(cheel.address);
+        const _r = await blockList.getTokenLimits(doppy.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("1500000"));
         expect(_r[2]).to.equal(parseEther("1000000"));
@@ -417,7 +388,7 @@ describe(CHEELConfig.contractName, () => {
     it("Testing Day and Month limits", async function () {
 
       // First transaction
-      result = await cheel.connect(deployer).transfer(
+      result = await doppy.connect(deployer).transfer(
         receiver.address,
         parseEther("500000")
       );
@@ -429,14 +400,15 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("500000").toString());
 
       {
-        const _r = await blockList.getUserTokenTransfers(cheel.address, deployer.address);
+        const _r = await blockList.getUserTokenTransfers(doppy.address, deployer.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("500000"));
         expect(_r[3]).to.equal(parseEther("500000"));
       }
+
       // Second transaction
-      result = await cheel.connect(deployer).transfer(
+      result = await doppy.connect(deployer).transfer(
         receiver.address,
         parseEther("500000")
       );
@@ -448,7 +420,7 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("500000").toString());
 
       {
-        const _r = await blockList.getUserTokenTransfers(cheel.address, deployer.address);
+        const _r = await blockList.getUserTokenTransfers(doppy.address, deployer.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("1000000"));
@@ -456,27 +428,16 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
         "DailyOutcomeLimitReached"
       );
 
-      // Getting Current Day
-      const date = new Date();
-      const year = date.toISOString().slice(0, 4);
-      const month = date.toISOString().slice(5, 7);
-      const day = date.toISOString().slice(8, 10);
-
-      expect(String(await blockList.getCurrentDay())).to.equal(`${year}${month}${day}`);
-
-      // Getting Current Month
-      expect(String(await blockList.getCurrentMonth())).to.equal(`${year}${month}`);
-
       // Getting Remaining limit
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, deployer.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, deployer.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("1500000"));
         expect(_r[2]).to.equal(0);
@@ -485,7 +446,7 @@ describe(CHEELConfig.contractName, () => {
 
       // disable day limits
       await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
+        doppy.address,
         true,
         true,
         false,
@@ -493,7 +454,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
@@ -501,21 +462,21 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
+        doppy.address,
         false,
         true,
         false,
         true
       );
 
-      await cheel.connect(deployer).transfer(
+      await doppy.connect(deployer).transfer(
         receiver.address,
         parseEther("1")
       );
 
       // Compare limits
       {
-        const _r = await blockList.getUserTokenTransfers(cheel.address, deployer.address);
+        const _r = await blockList.getUserTokenTransfers(doppy.address, deployer.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("1000000"));
@@ -524,7 +485,7 @@ describe(CHEELConfig.contractName, () => {
 
       // Getting Remaining limit
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, deployer.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, deployer.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("1500000"));
         expect(_r[2]).to.equal(0);
@@ -533,7 +494,7 @@ describe(CHEELConfig.contractName, () => {
 
       // enable day limits
       await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
+        doppy.address,
         true,
         true,
         true,
@@ -541,7 +502,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
@@ -552,7 +513,7 @@ describe(CHEELConfig.contractName, () => {
       await ethers.provider.send('evm_increaseTime', [24 * 60 * 60]);
 
       // Next Day transaction
-      result = await cheel.connect(deployer).transfer(
+      result = await doppy.connect(deployer).transfer(
         receiver.address,
         parseEther("499999")
       );
@@ -564,7 +525,7 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("499999").toString());
 
       {
-        const _r = await blockList.getUserTokenTransfers(cheel.address, deployer.address);
+        const _r = await blockList.getUserTokenTransfers(doppy.address, deployer.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("499999"));
@@ -573,7 +534,7 @@ describe(CHEELConfig.contractName, () => {
 
       // Getting Remaining limit
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, deployer.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, deployer.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("1500000"));
         expect(_r[2]).to.equal(parseEther("500001"));
@@ -581,21 +542,21 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1")
         ),
         "MonthlyOutcomeLimitReached"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("2500000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("2500000"));
 
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
     });
 
     it("Increase limits", async function () {
       result = await blockList.connect(moderator).setTokenLimits(
-        cheel.address,
+        doppy.address,
         parseEther("1000000"),
         parseEther("3000000"),
         parseEther("500000"),
@@ -604,14 +565,14 @@ describe(CHEELConfig.contractName, () => {
 
       resultWaited = await result.wait();
 
-      expect(resultWaited.events[0].args.token).to.equal(cheel.address);
+      expect(resultWaited.events[0].args.token).to.equal(doppy.address);
       expect(resultWaited.events[0].args.dailyIncomeLimit).to.equal(parseEther("1000000").toString());
       expect(resultWaited.events[0].args.monthlyIncomeLimit).to.equal(parseEther("3000000").toString());
       expect(resultWaited.events[0].args.dailyOutcomeLimit).to.equal(parseEther("500000").toString());
       expect(resultWaited.events[0].args.monthlyOutcomeLimit).to.equal(parseEther("3000000").toString());
 
       {
-        const _r = await blockList.getTokenLimits(cheel.address);
+        const _r = await blockList.getTokenLimits(doppy.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("3000000"));
         expect(_r[2]).to.equal(parseEther("500000"));
@@ -622,7 +583,7 @@ describe(CHEELConfig.contractName, () => {
     it("Testing Day and Month limits", async function () {
       // Getting Remaining limit
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, deployer.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, deployer.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("3000000"));
         expect(_r[2]).to.equal(parseEther("1"));
@@ -630,7 +591,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, receiver.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, receiver.address);
         expect(_r[0]).to.equal(parseEther("500001"));
         expect(_r[1]).to.equal(parseEther("1500000"));
         expect(_r[2]).to.equal(parseEther("500000"));
@@ -638,7 +599,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("2")
         ),
@@ -646,7 +607,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await blockList.connect(moderator).setTokenLimits(
-        cheel.address,
+        doppy.address,
         parseEther("500000"),
         parseEther("3000000"),
         parseEther("1000000"),
@@ -655,7 +616,7 @@ describe(CHEELConfig.contractName, () => {
 
       // Getting Remaining limit
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, deployer.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, deployer.address);
         expect(_r[0]).to.equal(parseEther("500000"));
         expect(_r[1]).to.equal(parseEther("3000000"));
         expect(_r[2]).to.equal(parseEther("500001"));
@@ -663,7 +624,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, receiver.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, receiver.address);
         expect(_r[0]).to.equal(parseEther("1"));
         expect(_r[1]).to.equal(parseEther("1500000"));
         expect(_r[2]).to.equal(parseEther("1000000"));
@@ -671,7 +632,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("2")
         ),
@@ -679,7 +640,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await blockList.connect(moderator).setTokenLimits(
-        cheel.address,
+        doppy.address,
         parseEther("1000000"),
         parseEther("3000000"),
         parseEther("1000000"),
@@ -687,7 +648,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       // First transaction
-      result = await cheel.connect(deployer).transfer(
+      result = await doppy.connect(deployer).transfer(
         receiver.address,
         parseEther("500000")
       );
@@ -699,7 +660,7 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("500000").toString());
 
       {
-        const _r = await blockList.getUserTokenTransfers(cheel.address, deployer.address);
+        const _r = await blockList.getUserTokenTransfers(doppy.address, deployer.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("999999"));
@@ -707,7 +668,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("2")
         ),
@@ -718,7 +679,7 @@ describe(CHEELConfig.contractName, () => {
       await ethers.provider.send('evm_increaseTime', [24 * 60 * 60]);
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1500000")
         ),
@@ -726,7 +687,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       // Next Day transaction
-      result = await cheel.connect(deployer).transfer(
+      result = await doppy.connect(deployer).transfer(
         receiver.address,
         parseEther("1000000")
       );
@@ -738,7 +699,7 @@ describe(CHEELConfig.contractName, () => {
       expect(resultWaited.events[0].args.value).to.equal(parseEther("1000000").toString());
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1500000")
         ),
@@ -746,7 +707,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       {
-        const _r = await blockList.getUserTokenTransfers(cheel.address, deployer.address);
+        const _r = await blockList.getUserTokenTransfers(doppy.address, deployer.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("1000000"));
@@ -754,7 +715,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1000000")
         ),
@@ -763,7 +724,7 @@ describe(CHEELConfig.contractName, () => {
 
       // disable day limits
       await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
+        doppy.address,
         false,
         true,
         false,
@@ -772,7 +733,7 @@ describe(CHEELConfig.contractName, () => {
 
       // Getting Remaining limit
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, deployer.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, deployer.address);
         expect(_r[0]).to.equal(parseEther("1000000"));
         expect(_r[1]).to.equal(parseEther("3000000"));
         expect(_r[2]).to.equal(0);
@@ -780,7 +741,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, receiver.address);
+        const _r = await blockList.getUserRemainingLimit(doppy.address, receiver.address);
         expect(_r[0]).to.equal(0);
         expect(_r[1]).to.equal(0);
         expect(_r[2]).to.equal(parseEther("1000000"));
@@ -788,7 +749,7 @@ describe(CHEELConfig.contractName, () => {
       }
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1000000")
         ),
@@ -796,7 +757,7 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
+        doppy.address,
         false,
         true,
         false,
@@ -804,142 +765,61 @@ describe(CHEELConfig.contractName, () => {
       );
 
       await expectCustomError(
-        cheel.connect(deployer).transfer(
+        doppy.connect(deployer).transfer(
           receiver.address,
           parseEther("1000000")
         ),
         "MonthlyIncomeLimitReached"
       );
-      
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      expect(await cheel.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
-    });
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-    it("Testing Exclusion list", async function () {
-      await blockList.connect(moderator).changeDisablingTokenLimits(
-        cheel.address,
-        true,
-        true,
-        true,
-        true
-      );
-
-      // Getting Remaining limit
-      {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, exclusionContract.address);
-        expect(_r[0]).to.equal(parseEther("1000000"));
-        expect(_r[1]).to.equal(parseEther("3000000"));
-        expect(_r[2]).to.equal(parseEther("1000000"));
-        expect(_r[3]).to.equal(parseEther("3000000"));
-      }
-
-      {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, receiver.address);
-        expect(_r[0]).to.equal(0);
-        expect(_r[1]).to.equal(0);
-        expect(_r[2]).to.equal(parseEther("1000000"));
-        expect(_r[3]).to.equal(parseEther("3000000"));
-      }
-
-      await expectCustomError(
-        cheel.connect(exclusionContract).transfer(
-          receiver.address,
-          parseEther("1500000")
-        ),
-        "DailyOutcomeLimitReached"
-      );
-
-      await blockList.connect(moderator).addContractToExclusionList(exclusionContract.address);
-
-      await expectCustomError(
-        cheel.connect(clearLimitsUser).transfer(
-          receiver.address,
-          parseEther("1")
-        ),
-        "DailyIncomeLimitReached"
-      );
-
-      // Excluded contract outcome transaction
-      await expectCustomError(
-        cheel.connect(exclusionContract).transfer(
-          receiver.address,
-          parseEther("1500000")
-        ),
-        "DailyIncomeLimitReached"
-      );
-
-      // Getting Remaining limit
-      {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, exclusionContract.address);
-        expect(_r[0]).to.equal(parseEther("1000000"));
-        expect(_r[1]).to.equal(parseEther("3000000"));
-        expect(_r[2]).to.equal(parseEther("1000000"));
-        expect(_r[3]).to.equal(parseEther("3000000"));
-      }
-
-      {
-        const _r = await blockList.getUserRemainingLimit(cheel.address, receiver.address);
-        expect(_r[0]).to.equal(0);
-        expect(_r[1]).to.equal(0);
-        expect(_r[2]).to.equal(parseEther("1000000"));
-        expect(_r[3]).to.equal(parseEther("3000000"));
-      }
-
-      await blockList.connect(moderator).removeContractFromExclusionList(exclusionContract.address);
-
-      await expectCustomError(
-        cheel.connect(exclusionContract).transfer(
-          receiver.address,
-          parseEther("1500000")
-        ),
-        "DailyOutcomeLimitReached"
-      );
+      expect(await doppy.balanceOf(badguy.address)).to.equal(parseEther("1000000"));
     });
   });
 
   describe("Restrictions:", async () => {
     it("Mint from users", async function () {
       await expectRevert(
-        cheel.connect(deployer).mint(
+        doppy.connect(deployer).mint(
           receiver.address,
           parseEther("1000000")
         ),
         "Ownable: caller is not the owner"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      expect(await cheel.balanceOf(receiver.address)).to.equal(parseEther("5000000"));
+      expect(await doppy.balanceOf(receiver.address)).to.equal(parseEther("5000000"));
 
-      expect(await cheel.totalSupply()).to.equal(parseEther("15000000"));
+      expect(await doppy.totalSupply()).to.equal(parseEther("9000000"));
     });
 
     it("Burn from users", async function () {
       await expectRevert(
-        cheel.connect(deployer).burn(
+        doppy.connect(deployer).burn(
           parseEther("1000000")
         ),
         "Ownable: caller is not the owner"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      expect(await cheel.totalSupply()).to.equal(parseEther("15000000"));
+      expect(await doppy.totalSupply()).to.equal(parseEther("9000000"));
     });
 
     it("Minting over max amount from owner", async function () {
       await expectCustomError(
-        cheel.connect(gnosis).mint(
+        doppy.connect(gnosis).mint(
           gnosis.address,
-          parseEther("1000000001")
+          parseEther("30000000001")
         ),
         "MaxSupplyExceeded"
       );
 
-      expect(await cheel.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
+      expect(await doppy.balanceOf(deployer.address)).to.equal(parseEther("1000000"));
 
-      expect(await cheel.totalSupply()).to.equal(parseEther("15000000"));
+      expect(await doppy.totalSupply()).to.equal(parseEther("9000000"));
     });
   });
 });

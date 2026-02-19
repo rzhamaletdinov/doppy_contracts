@@ -6,8 +6,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpg
 
 import "./DoppyToken.sol";
 
-contract CHEEL is ERC20VotesUpgradeable, DoppyToken {
-    address public constant GNOSIS_WALLET = 0x126481E4E79cBc8b4199911342861F7535e76EE7;
+contract BNH is ERC20VotesUpgradeable, DoppyToken {
+    address public constant GNOSIS_WALLET =
+        0x126481E4E79cBc8b4199911342861F7535e76EE7;
     uint256 public constant MAX_SUPPLY = 10 ** 9 * 10 ** 18;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -16,7 +17,7 @@ contract CHEEL is ERC20VotesUpgradeable, DoppyToken {
     }
 
     function initialize() external initializer {
-        __DoppyToken_init("CHEELEE", "CHEEL");
+        __DoppyToken_init("Beyond Normal Horizons", "BNH");
         __ERC20Votes_init();
         transferOwnership(GNOSIS_WALLET);
     }

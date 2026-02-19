@@ -8,7 +8,7 @@ import "./interfaces/IBlockList.sol";
 import "./interfaces/IDoppyToken.sol";
 
 /**
- * @dev Abstract contract implementing common logic for LEE and CHEEL tokens.
+ * @dev Abstract contract implementing common logic for DOPPY and BNH tokens.
  */
 abstract contract DoppyToken is
     IDoppyToken,

@@ -10,7 +10,7 @@ export interface BlockListConfigInterface {
   adminContractAddress: string | null;
 }
 
-export interface LEEConfigInterface {
+export interface DOPPYConfigInterface {
   testnet: NetworkConfigInterface;
   mainnet: NetworkConfigInterface;
   contractName: string;
@@ -24,7 +24,7 @@ export interface LEEConfigInterface {
   adminContractAddress: string | null;
 }
 
-export interface CHEELConfigInterface {
+export interface BNHConfigInterface {
   testnet: NetworkConfigInterface;
   mainnet: NetworkConfigInterface;
   contractName: string;
@@ -82,7 +82,7 @@ export interface MultiVestingConfigInterface {
   emergencyWithdrawEnabled: boolean;
   beneficiaryUpdateDelaySeconds: number;
   beneficiaryUpdateValiditySeconds: number;
-  cheelTokenAddress: string;
+  bnhTokenAddress: string;
 }
 
 

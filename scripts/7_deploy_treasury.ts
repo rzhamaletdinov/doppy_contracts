@@ -1,6 +1,6 @@
 import { ethers, upgrades } from 'hardhat';
 import { TreasuryContractType } from '../lib/ContractProvider';
-import { CHEELConfig, LEEConfig, NFTCasesConfig, NFTGlassesConfig, TreasuryConfig } from "../config/ContractsConfig";
+import { BNHConfig, DOPPYConfig, TreasuryConfig } from "../config/ContractsConfig";
 import { verify } from "./19_verify";
 
 async function main() {
@@ -15,11 +15,13 @@ async function main() {
 
   // We get the contract to deploy
   const TreasuryContract = await ethers.getContractFactory(TreasuryConfig.contractName);
+  const [deployer] = await ethers.getSigners();
   const treasuryProxy = await upgrades.deployProxy(TreasuryContract, [
     '', // recipient address
-    LEEConfig.proxyContractAddress,
-    CHEELConfig.proxyContractAddress,
-    ''
+    DOPPYConfig.proxyContractAddress,
+    BNHConfig.proxyContractAddress,
+    '', // USDT address
+    '' // signer address
   ], { initializer: 'initialize' }) as TreasuryContractType;
 
   await treasuryProxy.deployed();
