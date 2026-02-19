@@ -10,8 +10,14 @@ interface ITreasury {
     /// @notice Zero address provided
     error ZeroAddress();
 
-    /// @notice Option (token/NFT) disabled
+    /// @notice Option (token) disabled
     error OptionDisabled();
+
+    /// @notice Invalid signature
+    error BadSignature();
+
+    /// @notice Signature (nonce) already used
+    error SignatureAlreadyUsed();
 
     // --- Events ---
 
@@ -33,4 +39,7 @@ interface ITreasury {
 
     /// @notice Recipient address updated
     event RecipientUpdated(address newRecipient);
+
+    /// @notice Signer address updated
+    event SignerUpdated(address signer);
 }

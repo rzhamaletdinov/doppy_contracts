@@ -20,7 +20,8 @@ async function main() {
     '', // recipient address
     DOPPYConfig.proxyContractAddress,
     BNHConfig.proxyContractAddress,
-    ''
+    '', // USDT address
+    '' // signer address
   ], { initializer: 'initialize' }) as TreasuryContractType;
 
   await treasuryProxy.deployed();

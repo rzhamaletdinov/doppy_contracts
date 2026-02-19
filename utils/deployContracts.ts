@@ -22,9 +22,9 @@ export async function deployBNH() {
     return contract
 }
 
-export async function deployTreasury(recipient: any, doppy: any, bnh: any, usdt: any) {
+export async function deployTreasury(recipient: any, doppy: any, bnh: any, usdt: any, signer: any) {
     const Contract = await ethers.getContractFactory("Treasury");
-    const contract = await upgrades.deployProxy(Contract, [recipient, doppy, bnh, usdt], { initializer: "initialize" })
+    const contract = await upgrades.deployProxy(Contract, [recipient, doppy, bnh, usdt, signer], { initializer: "initialize" })
     await contract.deployed()
     return contract
 }
