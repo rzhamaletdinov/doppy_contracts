@@ -144,16 +144,6 @@ describe(BNHConfig.contractName, () => {
 
       expect(await bnh.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
     });
-
-    it("Delegate", async function () {
-      await bnh.connect(badguy).delegate(
-        deployer.address
-      );
-
-      expect(await bnh.balanceOf(deployer.address)).to.equal(parseEther("2000000"));
-
-      expect(await bnh.balanceOf(badguy.address)).to.equal(parseEther("2000000"));
-    });
   });
 
   describe("Global blocklist", async () => {

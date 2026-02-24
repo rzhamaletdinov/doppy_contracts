@@ -39,7 +39,7 @@ abstract contract DoppyToken is
      * @param _to: recipient address
      * @param _amount: amount of tokens
      */
-    function mint(address _to, uint256 _amount) external override onlyOwner {
+    function mint(address _to, uint256 _amount) external override virtual onlyOwner {
         if (totalSupply() + _amount > maxSupply()) revert MaxSupplyExceeded();
         _mint(_to, _amount);
     }
@@ -47,7 +47,7 @@ abstract contract DoppyToken is
     /**
      * @param _amount: amount of tokens
      */
-    function burn(uint256 _amount) external override onlyOwner {
+    function burn(uint256 _amount) external override virtual onlyOwner {
         _burn(_msgSender(), _amount);
     }
 

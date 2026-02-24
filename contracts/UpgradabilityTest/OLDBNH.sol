@@ -4,10 +4,11 @@ pragma solidity ^0.8.18;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
-contract OLDBNH is ERC20VotesUpgradeable, OwnableUpgradeable {
-    uint256 public constant MAX_AMOUNT = 10 ** 9 * 10 ** 18;
-    address public constant GNOSIS = 0x126481E4E79cBc8b4199911342861F7535e76EE7;
-    uint256[50] private __gap;
+import "../DoppyToken.sol";
+
+contract OLDBNH is OwnableUpgradeable, DoppyToken {
+    uint256 public constant MAX_SUPPLY = 10 ** 9 * 10 ** 18;
+    address public constant GNOSIS_WALLET = 0x126481E4E79cBc8b4199911342861F7535e76EE7;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -17,22 +18,25 @@ contract OLDBNH is ERC20VotesUpgradeable, OwnableUpgradeable {
     function initialize() external initializer {
         __ERC20_init("Beyond Normal Horizons", "BNH");
         __ERC20Permit_init("Beyond Normal Horizons");
-        __ERC20Votes_init();
 
         __Ownable_init();
 
-        transferOwnership(GNOSIS);
+        transferOwnership(GNOSIS_WALLET);
     }
 
-    function mint(address _to, uint256 _amount) external onlyOwner {
+    function mint(address _to, uint256 _amount) external override onlyOwner {
         require(
-            totalSupply() + _amount <= MAX_AMOUNT,
+            totalSupply() + _amount <= MAX_SUPPLY,
             "Can't mint more than max amount"
         );
         _mint(_to, _amount);
     }
 
-    function burn(uint256 _amount) external onlyOwner {
+    function burn(uint256 _amount) external override onlyOwner {
         _burn(msg.sender, _amount);
+    }
+
+    function maxSupply() public pure override returns (uint256) {
+        return MAX_SUPPLY;
     }
 }
