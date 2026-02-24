@@ -16,6 +16,9 @@ interface ITreasury {
     /// @notice Invalid signature
     error BadSignature();
 
+    /// @notice Signature expired
+    error SignatureExpired();
+
     /// @notice Signature (nonce) already used
     error SignatureAlreadyUsed();
 

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { parseEther } from "ethers/lib/utils";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { TreasuryConfig, DOPPYConfig, BNHConfig } from "../config/ContractsConfig";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { deployTreasury, deployDOPPY, deployBNH } from "../utils/deployContracts";
@@ -29,6 +29,7 @@ describe(TreasuryConfig.contractName, () => {
             { name: "nonce", type: "uint256" },
             { name: "amount", type: "uint256" },
             { name: "option", type: "uint256" },
+            { name: "ttl", type: "uint256" },
         ],
     };
 
@@ -46,13 +47,15 @@ describe(TreasuryConfig.contractName, () => {
         contractAddress: string,
         nonce: number,
         amount: any,
-        option: number
+        option: number,
+        ttl: number
     ) {
         const domain = getEIP712Domain(contractAddress);
         const message = {
             nonce: nonce,
             amount: amount,
             option: option,
+            ttl: ttl,
         };
         return signer._signTypedData(domain, WithdrawSignatureTypes, message);
     }
@@ -135,9 +138,11 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 100;
             const amount = parseEther("100");
             const option = 0;
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
-            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option);
-            const recovered = await treasury.verifySignature(nonce, amount, option, signature);
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
+            const recovered = await treasury.verifySignature(nonce, amount, option, ttl, signature);
 
             expect(recovered).to.equal(signerWallet.address);
         });
@@ -146,9 +151,11 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 101;
             const amount = parseEther("100");
             const option = 0;
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
-            const signature = await signWithdraw(badguy, treasury.address, nonce, amount, option);
-            const recovered = await treasury.verifySignature(nonce, amount, option, signature);
+            const signature = await signWithdraw(badguy, treasury.address, nonce, amount, option, ttl);
+            const recovered = await treasury.verifySignature(nonce, amount, option, ttl, signature);
 
             expect(recovered).to.not.equal(signerWallet.address);
             expect(recovered).to.equal(badguy.address);
@@ -158,6 +165,8 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 102;
             const amount = parseEther("100");
             const option = 0;
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
             // Create signature with wrong chainId
             const wrongChainIdDomain = {
@@ -171,12 +180,13 @@ describe(TreasuryConfig.contractName, () => {
                 nonce: nonce, // Use correct nonce
                 amount: amount,
                 option: option,
+                ttl: ttl,
             };
 
             // Manually sign with wrong domain
             const signature = await signerWallet._signTypedData(wrongChainIdDomain, WithdrawSignatureTypes, message);
 
-            const recovered = await treasury.verifySignature(nonce, amount, option, signature);
+            const recovered = await treasury.verifySignature(nonce, amount, option, ttl, signature);
 
             expect(recovered).to.not.equal(signerWallet.address);
         });
@@ -187,12 +197,14 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 1;
             const amount = parseEther("100");
             const option = 0; // DOPPY
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
             const balanceBefore = await doppy.balanceOf(recipient.address);
 
-            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option);
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
 
-            await expect(treasury.withdraw(nonce, amount, option, signature))
+            await expect(treasury.withdraw(nonce, amount, option, ttl, signature))
                 .to.emit(treasury, "TokenWithdrawn")
                 .withArgs(recipient.address, amount, option);
 
@@ -204,11 +216,13 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 2;
             const amount = parseEther("200");
             const option = 1; // BNH
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
             const balanceBefore = await bnh.balanceOf(recipient.address);
 
-            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option);
-            await treasury.withdraw(nonce, amount, option, signature);
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
+            await treasury.withdraw(nonce, amount, option, ttl, signature);
 
             const balanceAfter = await bnh.balanceOf(recipient.address);
             expect(balanceAfter.sub(balanceBefore)).to.equal(amount);
@@ -218,29 +232,33 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 3;
             const amount = parseEther("300");
             const option = 2; // mockUsdt
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
             const balanceBefore = await mockUsdt.balanceOf(recipient.address);
 
-            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option);
-            await treasury.withdraw(nonce, amount, option, signature);
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
+            await treasury.withdraw(nonce, amount, option, ttl, signature);
 
             const balanceAfter = await mockUsdt.balanceOf(recipient.address);
             expect(balanceAfter.sub(balanceBefore)).to.equal(amount);
         });
 
-        it("Should revert on reused nonce (SignatureAlreadyUsed)", async () => {
+        it("Should revert on used nonce (SignatureAlreadyUsed)", async () => {
             const nonce = 4;
             const amount = parseEther("50");
             const option = 0;
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
-            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option);
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
 
             // First call succeeds
-            await treasury.withdraw(nonce, amount, option, signature);
+            await treasury.withdraw(nonce, amount, option, ttl, signature);
 
             // Second call with same nonce should revert
             await expectCustomError(
-                treasury.withdraw(nonce, amount, option, signature),
+                treasury.withdraw(nonce, amount, option, ttl, signature),
                 "SignatureAlreadyUsed"
             );
         });
@@ -249,13 +267,31 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 5;
             const amount = parseEther("50");
             const option = 0;
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
             // Sign with wrong signer
-            const signature = await signWithdraw(badguy, treasury.address, nonce, amount, option);
+            const signature = await signWithdraw(badguy, treasury.address, nonce, amount, option, ttl);
 
             await expectCustomError(
-                treasury.withdraw(nonce, amount, option, signature),
+                treasury.withdraw(nonce, amount, option, ttl, signature),
                 "BadSignature"
+            );
+        });
+
+        it("Should revert on expired ttl (SignatureExpired)", async () => {
+            const nonce = 999;
+            const amount = parseEther("50");
+            const option = 0;
+            
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp - 1; // Expired ttl
+
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
+
+            await expectCustomError(
+                treasury.withdraw(nonce, amount, option, ttl, signature),
+                "SignatureExpired"
             );
         });
 
@@ -263,14 +299,16 @@ describe(TreasuryConfig.contractName, () => {
             const nonce = 6;
             const amount = parseEther("50");
             const option = 0;
+            const block = await ethers.provider.getBlock("latest");
+            const ttl = block.timestamp + 3600;
 
             // Disable token first
             await treasury.connect(gnosis).disableToken(option);
 
-            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option);
+            const signature = await signWithdraw(signerWallet, treasury.address, nonce, amount, option, ttl);
 
             await expectCustomError(
-                treasury.withdraw(nonce, amount, option, signature),
+                treasury.withdraw(nonce, amount, option, ttl, signature),
                 "OptionDisabled"
             );
 

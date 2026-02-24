@@ -23,7 +23,7 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
     /// @notice Typehash for ERC20 token withdrawal signature
     bytes32 public constant PASS_TYPEHASH =
         keccak256(
-            "WithdrawSignature(uint256 nonce,uint256 amount,uint256 option)"
+            "WithdrawSignature(uint256 nonce,uint256 amount,uint256 option,uint256 ttl)"
         );
 
     /// @notice Used signatures tracked by nonce
@@ -81,16 +81,18 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
     /// @param _nonce Unique signature identifier
     /// @param _amount Token amount
     /// @param _option Token index in allowedTokens array
+    /// @param _ttl Time to live for signature (timestamp)
     /// @param _signature Signature bytes
     /// @return Recovered signer address
     function verifySignature(
         uint256 _nonce,
         uint256 _amount,
         uint256 _option,
+        uint256 _ttl,
         bytes memory _signature
     ) public view virtual returns (address) {
         bytes32 _digest = _hashTypedDataV4(
-            keccak256(abi.encode(PASS_TYPEHASH, _nonce, _amount, _option))
+            keccak256(abi.encode(PASS_TYPEHASH, _nonce, _amount, _option, _ttl))
         );
         return ECDSAUpgradeable.recover(_digest, _signature);
     }
@@ -99,18 +101,24 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
     /// @param _nonce Unique signature identifier
     /// @param _amount Token amount
     /// @param _option Token index in allowedTokens array
+    /// @param _ttl Time to live for signature (timestamp)
     /// @param _signature Signature bytes
     function withdraw(
         uint256 _nonce,
         uint256 _amount,
         uint256 _option,
+        uint256 _ttl,
         bytes memory _signature
     ) external virtual {
+        if (block.timestamp > _ttl) revert SignatureExpired();
+
         if (address(allowedTokens[_option]) == address(0))
             revert OptionDisabled();
 
-        if (verifySignature(_nonce, _amount, _option, _signature) != signer)
-            revert BadSignature();
+        if (
+            verifySignature(_nonce, _amount, _option, _ttl, _signature) !=
+            signer
+        ) revert BadSignature();
 
         if (usedSignature[_nonce]) revert SignatureAlreadyUsed();
 
