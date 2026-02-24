@@ -31,4 +31,9 @@ interface IDoppyToken {
      * @param _blockList: new blocklist address
      */
     function setBlockList(IBlockList _blockList) external;
+
+    function initialize() external;
+
+    function GNOSIS_WALLET() external view returns (address);
+    function blockList() external view returns (IBlockList);
 }

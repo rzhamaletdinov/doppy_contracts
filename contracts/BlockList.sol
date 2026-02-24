@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import "./interfaces/IBlockList.sol";
 
 /// @title BlockList
 /// @notice Contract for managing global and internal blocklists, transfer limits and exclusion list
-contract BlockList is IBlockList, OwnableUpgradeable, AccessControlUpgradeable {
+contract BlockList is IBlockList, AccessControlUpgradeable {
     bytes32 public constant BLOCKLIST_ADMIN_ROLE = keccak256("BLOCKLIST_ADMIN_ROLE");
     address public constant GNOSIS_WALLET = 0x126481E4E79cBc8b4199911342861F7535e76EE7;
 
@@ -22,7 +21,6 @@ contract BlockList is IBlockList, OwnableUpgradeable, AccessControlUpgradeable {
     mapping(address token => TokenLimit) public tokenLimits;
     mapping(address token => mapping(address user => mapping(uint256 date => TokenTransfers transfers)))
         public tokenTransfers;
-
 
     uint256[50] private __gap;
 
@@ -39,11 +37,8 @@ contract BlockList is IBlockList, OwnableUpgradeable, AccessControlUpgradeable {
 
     function initialize() external initializer {
         __AccessControl_init();
-        __Ownable_init();
 
         contractsExclusionList[address(0)] = true;
-
-        transferOwnership(GNOSIS_WALLET);
 
         _setupRole(DEFAULT_ADMIN_ROLE, GNOSIS_WALLET);
         _setupRole(BLOCKLIST_ADMIN_ROLE, GNOSIS_WALLET);
@@ -416,7 +411,7 @@ contract BlockList is IBlockList, OwnableUpgradeable, AccessControlUpgradeable {
         } else {
             dailyOutcomeRemaining = limits.dailyOutcome - dailyOutcomeTransfers;
         }
-        
+
         if (monthlyOutcomeTransfers >= limits.monthlyOutcome) {
             monthlyOutcomeRemaining = 0;
         } else {
@@ -434,14 +429,14 @@ contract BlockList is IBlockList, OwnableUpgradeable, AccessControlUpgradeable {
     ) internal pure returns (uint256 year, uint256 month, uint256 day) {
         unchecked {
             uint256 daysSinceEpoch = _timestamp / 86400;
-            
+
             uint256 a = daysSinceEpoch + 2440588 + 32044;
             uint256 b = (4 * a + 3) / 146097;
             uint256 c = a - (146097 * b) / 4;
             uint256 d = (4 * c + 3) / 1461;
             uint256 e = c - (1461 * d) / 4;
             uint256 m = (5 * e + 2) / 153;
-            
+
             day = e - (153 * m + 2) / 5 + 1;
             month = m + 3 - 12 * (m / 10);
             year = 100 * b + d - 4800 + (m / 10);

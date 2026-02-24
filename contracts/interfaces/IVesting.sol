@@ -83,4 +83,54 @@ interface IVesting {
     ) external view returns (uint256 vestedAmount, uint256 maxAmount);
 
     function emergencyVest(IERC20Upgradeable _token) external;
+
+    function initialize(
+        IERC20Upgradeable _token,
+        bool _beneficiaryUpdateEnabled,
+        bool _emergencyWithdrawEnabled,
+        uint256 _beneficiaryUpdateDelay,
+        uint256 _beneficiaryUpdateValidity
+    ) external;
+
+    function updateBeneficiary(
+        address _oldBeneficiary,
+        address _newBeneficiary
+    ) external;
+
+    function finishUpdateBeneficiary(address _oldBeneficiary) external;
+
+    function setManager(address _manager) external;
+
+    function disableEarlyWithdraw() external;
+
+    function GNOSIS_WALLET() external view returns (address);
+    function token() external view returns (IERC20Upgradeable);
+    function vestingAmount() external view returns (uint256);
+    function manager() external view returns (address);
+    function beneficiaryUpdateDelay() external view returns (uint256);
+    function beneficiaryUpdateValidity() external view returns (uint256);
+    function beneficiaryUpdateEnabled() external view returns (bool);
+    function emergencyWithdrawEnabled() external view returns (bool);
+    function released(address beneficiary) external view returns (uint256);
+    function beneficiary(
+        address beneficiary
+    )
+        external
+        view
+        returns (
+            uint256 start,
+            uint256 duration,
+            uint256 cliff,
+            uint256 amount
+        );
+    function updateBeneficiaryLock(
+        address beneficiary
+    )
+        external
+        view
+        returns (
+            address oldBeneficiary,
+            address newBeneficiary,
+            uint256 timestamp
+        );
 }

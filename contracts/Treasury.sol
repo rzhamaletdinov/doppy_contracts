@@ -129,9 +129,11 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
         emit TokenWithdrawn(recipient, _amount, _option);
     }
 
-    /// @notice Withdraw arbitrary token by owner
-    /// @param _token Token address
-    /// @param _amount Amount
+    /**
+     * @notice Withdraw arbitrary token by owner
+     * @param _token Token address
+     * @param _amount Amount
+     */
     function withdrawToken(
         IERC20Upgradeable _token,
         uint256 _amount
@@ -141,8 +143,10 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
         emit TokenWithdrawnByOwner(address(_token), _amount);
     }
 
-    /// @notice Add new allowed token
-    /// @param _token Token address
+    /**
+     * @notice Add new allowed token
+     * @param _token Token address
+     */
     function addToken(IERC20Upgradeable _token) external onlyOwner {
         if (address(_token) == address(0)) revert ZeroAddress();
         allowedTokens.push(_token);
@@ -150,16 +154,20 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
         emit TokenAdded(address(_token));
     }
 
-    /// @notice Disable token by index
-    /// @param _index Token index
+    /**
+     * @notice Disable token by index
+     * @param _index Token index
+     */
     function disableToken(uint256 _index) external onlyOwner {
         allowedTokens[_index] = IERC20Upgradeable(address(0));
 
         emit TokenDisabled(_index);
     }
 
-    /// @notice Set recipient address
-    /// @param _recipient New recipient address
+    /**
+     * @notice Set recipient address
+     * @param _recipient New recipient address
+     */
     function setRecipient(address _recipient) external onlyOwner {
         if (_recipient == address(0)) revert ZeroAddress();
         recipient = _recipient;
@@ -167,8 +175,10 @@ contract Treasury is EIP712Upgradeable, OwnableUpgradeable, ITreasury {
         emit RecipientUpdated(_recipient);
     }
 
-    /// @notice Set signer address
-    /// @param _signer New signer address
+    /**
+     * @notice Set signer address
+     * @param _signer New signer address
+     */
     function setSigner(address _signer) external onlyOwner {
         if (_signer == address(0)) revert ZeroAddress();
         signer = _signer;
