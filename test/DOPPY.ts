@@ -343,6 +343,16 @@ describe(DOPPYConfig.contractName, () => {
   });
 
   describe("Token Rate Limit", async () => {
+    before(async () => {
+      // Advance time to the middle of the next month to avoid month boundary rollovers
+      const latestBlock = await ethers.provider.getBlock("latest");
+      const date = new Date(latestBlock.timestamp * 1000);
+      date.setUTCMonth(date.getUTCMonth() + 1);
+      date.setUTCDate(15);
+      await ethers.provider.send("evm_setNextBlockTimestamp", [Math.floor(date.getTime() / 1000)]);
+      await ethers.provider.send("evm_mine", []);
+    });
+
     it("Adding Token limit", async function () {
       result = await blockList.connect(moderator).setTokenLimits(
         doppy.address,
