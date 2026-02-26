@@ -73,7 +73,7 @@ npx hardhat compile
 **3. BNH (`npx hardhat run deploy_instructions/4_deploy_bnh.ts --network bsc`)**
 - Деплоит токен BNH.
 
-**4. Treasury (`npx hardhat run deploy_instructions/5_deploy_treasury.ts --network bsc`)**
+**4. Treasury (`npx hardhat run deploy_instructions/7_deploy_treasury.ts --network bsc`)**
 - Деплоит казначейство. Этот контракт **строго требует**, чтобы адреса DOPPY и BNH уже были задеплоены и правильно записаны в конфигурацию, так как `Treasury` обращается к ним при инициализации. А также в самом скрипте необходимо прописать адреса recipient, USDT и signer
 
 ---
