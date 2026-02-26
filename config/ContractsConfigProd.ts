@@ -1,6 +1,6 @@
 import {
   BNHConfigInterface,
-  BlockListConfigInterface, DOPPYConfigInterface, NFTConfigInterface, NFTSaleConfigInterface, TreasuryConfigInterface, MultiVestingConfigInterface
+  BlockListConfigInterface, DOPPYConfigInterface, TreasuryConfigInterface, MultiVestingConfigInterface
 } from '../lib/ContractsConfigInterface';
 import * as Networks from '../lib/Networks';
 

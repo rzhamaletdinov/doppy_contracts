@@ -1,7 +1,7 @@
 import { ethers, upgrades } from 'hardhat';
 import { DOPPYContractType } from '../lib/ContractProvider';
-import { DOPPYConfig } from "../config/ContractsConfig";
-import {verify} from "./19_verify";
+import { DOPPYConfig } from "../config/ContractsConfigProd";
+import {verify} from "../scripts/19_verify";
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command

@@ -1,6 +1,6 @@
 import { ethers, upgrades } from 'hardhat';
-import { BlockListConfig } from "../config/ContractsConfig";
-import { verify } from "./19_verify";
+import { BlockListConfig } from "../config/ContractsConfigProd";
+import { verify } from "../scripts/19_verify";
 
 async function main() {
   console.log('Deploying BlockList contract...');

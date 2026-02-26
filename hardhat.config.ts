@@ -40,7 +40,7 @@ const config: HardhatUserConfig = {
   },
   // defaultNetwork: "goerli",
   networks: {
-    binance: {
+    bsc: {
       url: process.env.BINANCE_URL || "",
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
@@ -52,13 +52,19 @@ const config: HardhatUserConfig = {
       url: process.env.GOERLI_URL || "",
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
+    truffle: {
+      url: "http://127.0.0.1:8545",
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
   },
   etherscan: {
-    apiKey: process.env.API_KEY
+    apiKey: {
+      mainnet: process.env.API_KEY || "",
+      bsc: process.env.BSCSCAN_API_KEY || "",
+    }
   },
 };
 

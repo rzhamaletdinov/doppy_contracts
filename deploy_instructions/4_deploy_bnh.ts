@@ -1,7 +1,7 @@
 import { ethers, upgrades } from 'hardhat';
 import { BNHContractType } from '../lib/ContractProvider';
-import { BNHConfig } from "../config/ContractsConfig";
-import { verify } from "./19_verify";
+import { BNHConfig } from "../config/ContractsConfigProd";
+import { verify } from "../scripts/19_verify";
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
